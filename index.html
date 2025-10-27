@@ -22,21 +22,38 @@
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#60a5fa" />
 
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://zamboni.gg/">
-    <meta property="og:title" content="Zamboni — NHL10 Private Server's Game & Player Statistics">
-    <meta property="og:description" content="Track live Zamboni's NHL10 games, player performance, and API data.">
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://zamboni.gg/" />
+    <meta
+      property="og:title"
+      content="Zamboni — NHL10 Private Server's Game & Player Statistics"
+    />
+    <meta
+      property="og:description"
+      content="Track live Zamboni's NHL10 games, player performance, and API data."
+    />
     <meta property="og:locale" content="en_US" />
     <meta property="og:site_name" content="Zamboni - Statistics" />
 
-    <meta property="twitter:card" content="summary">
-    <meta property="twitter:url" content="https://zamboni.gg/">
-    <meta property="twitter:title" content="Zamboni — NHL10 Private Server's Game & Player Statistics">
-    <meta property="twitter:description" content="Track live Zamboni's NHL10 games, player performance, and API data.">
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:url" content="https://zamboni.gg/" />
+    <meta
+      property="twitter:title"
+      content="Zamboni — NHL10 Private Server's Game & Player Statistics"
+    />
+    <meta
+      property="twitter:description"
+      content="Track live Zamboni's NHL10 games, player performance, and API data."
+    />
 
-    <link rel="canonical" href="https://zamboni.gg/">
-    <link rel="icon" type="image/png" sizes="32x32" href="https://zamboni.gg/favicon.png" />
-    
+    <link rel="canonical" href="https://zamboni.gg/" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="https://zamboni.gg/favicon.png"
+    />
+
     <!-- Tailwind & Tailwind Config -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -175,9 +192,10 @@
       class="pointer-events-none absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl animate-blob [animation-delay:2s]"
     ></div>
 
-    <div class="flex min-h-screen relative">
+    <div class="flex min-h-screen relative flex-col md:flex-row">
       <aside
-        class="w-64 shrink-0 border-r border-white/10 bg-surface-100/60 backdrop-blur-xl"
+        id="sidebar"
+        class="fixed md:static inset-y-0 left-0 z-30 w-64 shrink-0 border-r border-white/10 bg-surface-100/60 backdrop-blur-xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out"
       >
         <div class="px-4 py-4">
           <a href="https://zamboni.gg" class="flex items-center gap-2 lift">
@@ -188,7 +206,7 @@
             <span class="text-lg font-semibold">Zamboni</span>
           </a>
         </div>
-        
+
         <!-- NavBar on left -->
         <nav class="px-2 pb-4 space-y-1">
           <button
@@ -234,6 +252,26 @@
           class="sticky top-0 z-10 border-b border-white/10 bg-surface-100/60 px-6 py-3 backdrop-blur-xl"
         >
           <div class="flex items-center gap-3">
+            <button
+              id="menuToggle"
+              class="md:hidden p-2 rounded-lg hover:bg-white/10 border border-white/10 focus-ring"
+              aria-label="Toggle menu"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
             <h1 id="pageTitle" class="text-xl font-semibold tracking-tight">
               Status
             </h1>
