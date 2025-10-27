@@ -1,5 +1,5 @@
 // if you run on local reverse proxy set to empty
-const base = "";
+const base = "https://kaapo.gg";
 
 const tabs = ["status", "games", "players", "api"];
 const btns = document.querySelectorAll(".tab-btn");
@@ -551,3 +551,23 @@ function barWidth(v) {
     selectTab(tabs.includes(t) ? t : "status");
     loadStatus();
 })();
+
+// yeah this could be a good addon
+// navbar toggle
+const menuToggle = document.getElementById("menuToggle");
+const sidebar = document.getElementById("sidebar");
+
+menuToggle?.addEventListener("click", () => {
+    const isHidden = sidebar.classList.contains("-translate-x-full");
+    sidebar.classList.toggle("-translate-x-full", !isHidden);
+});
+
+document.addEventListener("click", (e) => {
+    if (
+        window.innerWidth < 768 &&
+        !sidebar.contains(e.target) &&
+        !menuToggle.contains(e.target)
+    ) {
+        sidebar.classList.add("-translate-x-full");
+    }
+});
