@@ -1,5 +1,5 @@
-// if you run on local reverse proxy set to empty
-const base = "https://kaapo.gg";
+// if you run on local proxy due to cors then set to empty
+const base = "https://zamboni.gg";
 
 const tabs = ["status", "games", "players", "api"];
 const btns = document.querySelectorAll(".tab-btn");
@@ -279,18 +279,54 @@ async function loadProfile(gamertag) {
     profileOverview.innerHTML = `<div class='text-sm text-slate-400 skeleton h-24 rounded-lg bg-white/5'></div>`;
     profileRaw.textContent = "Loading…";
     try {
-        // fetch the profile data
-        const res = await fetch(
-            `${base}/api/player/${encodeURIComponent(gamertag)}`
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        // fetch player profile, games, and reports
+        const [profileRes, gamesRes, reportsRes] = await Promise.all([
+            fetch(`${base}/api/player/${encodeURIComponent(gamertag)}`),
+            fetch(`${base}/api/raw/games`),
+            fetch(`${base}/api/raw/reports`)
+        ]);
 
-        // render profile
+        if (!profileRes.ok) throw new Error(`Profile HTTP ${profileRes.status}`);
+        if (!gamesRes.ok) throw new Error(`Games HTTP ${gamesRes.status}`);
+        if (!reportsRes.ok) throw new Error(`Reports HTTP ${reportsRes.status}`);
+
+        const [data, games, reports] = await Promise.all([
+            profileRes.json(),
+            gamesRes.json(),
+            reportsRes.json()
+        ]);
+
+        // prep recent 5 matches for this player
+        const playerReports = reports.filter(r => r.gamertag === gamertag);
+        const gamesMap = new Map(games.map(g => [g.game_id, g]));
+        const recent = [];
+
+        for (const r of playerReports.slice(-10).reverse()) {
+            const g = gamesMap.get(r.game_id);
+            if (!g) continue;
+
+            const sameGame = reports.filter(x => x.game_id === r.game_id);
+            const opponent = sameGame.find(x => x.gamertag !== gamertag);
+            const won = Number(r.score || 0) > Number(opponent?.score || 0);
+            recent.push({
+                game_id: r.game_id,
+                opponent: opponent?.gamertag || "Unknown",
+                team: r.team_name,
+                opponentTeam: opponent?.team_name,
+                score: `${r.score ?? 0} - ${opponent?.score ?? 0}`,
+                result: won ? "Win" : "Loss",
+                time: g?.created_at
+            });
+        }
+
+        // 5 recent matches
+        data.recentMatches = recent.slice(0, 5);
+
+        // render profile and raw json
         renderProfileOverview(gamertag, data);
         profileRaw.textContent = JSON.stringify(data, null, 2);
 
-        // set the player data to url href
+        // url param
         selectTab("players");
         const u = new URL(location.href);
         u.searchParams.set("player", gamertag);
@@ -422,6 +458,40 @@ function renderProfileOverview(name, data) {
                 .join("") +
             `</div>`;
         main.appendChild(box);
+    }
+
+    const recent = data.recentMatches || [];
+    if (recent.length) {
+    const recentBox = document.createElement("div");
+    recentBox.className = "rounded-xl border border-white/10 bg-white/5 p-4 lift";
+    recentBox.innerHTML = `
+        <div class='text-sm font-semibold mb-3'>Recent Matches</div>
+        <div class='grid gap-2'>
+        ${recent.map(m => `
+            <div class='rounded-lg border border-white/10 bg-slate-900/60 p-3'>
+            <div class='flex items-center justify-between text-xs text-slate-400 mb-1'>
+                <span>${safeDate(m.time)}</span>
+                <span class='${m.result === "Win" ? "text-emerald-400" : "text-rose-400"} font-medium'>
+                ${m.result}
+                </span>
+            </div>
+            <div class='text-sm font-semibold text-slate-100 mb-0.5'>
+                ${escapeHtml(m.team || "Unknown")} 
+                <span class='text-slate-500'>vs</span> 
+                ${escapeHtml(m.opponentTeam || "Unknown")}
+            </div>
+            <div class='text-xs text-slate-400 mb-0.5'>
+                ${escapeHtml(name)} 
+                <span class='text-slate-500'>vs</span> 
+                ${escapeHtml(m.opponent || "Unknown")}
+            </div>
+            <div class='text-xs text-slate-300 flex items-center justify-between mt-1'>
+                <span>Final Score: <b>${escapeHtml(m.score)}</b></span>
+                <span class='text-slate-500'>Game #${m.game_id}</span>
+            </div>
+            </div>`).join("")}
+        </div>`;
+    main.appendChild(recentBox);
     }
 
     profileOverview.replaceChildren(main);
