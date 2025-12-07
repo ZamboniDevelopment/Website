@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zamboni - FAQ</title>
+
+    <meta name="description" content="Frequently Asked Questions about Zamboni" />
+    <meta name="theme-color" content="#60a5fa" />
+    <meta name="robots" content="index,follow" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui"] },
+                    colors: {
+                        surface: { 50: "#0b1220", 100: "#0e1526" },
+                        primary: { 500: "#60a5fa" },
+                    },
+                    boxShadow: {
+                        glow: "0 10px 30px -12px rgb(59 130 246 / 0.35)",
+                        card: "0 8px 40px -12px rgb(0 0 0 / 0.4)",
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            "0%": { opacity: 0, transform: "translateY(20px)" },
+                            "100%": { opacity: 1, transform: "translateY(0)" },
+                        },
+                        blob: {
+                            "0%": { transform: "translate(0,0) scale(1)" },
+                            "33%": { transform: "translate(30px,-40px) scale(1.05)" },
+                            "66%": { transform: "translate(-30px,20px) scale(0.95)" },
+                            "100%": { transform: "translate(0,0) scale(1)" },
+                        },
+                    },
+                    animation: {
+                        fadeInUp: "fadeInUp .6s ease-out both",
+                        blob: "blob 14s ease-in-out infinite",
+                    },
+                    backgroundImage: {
+                        grid: "radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.06) 1px, transparent 0)",
+                        aurora:
+                            "radial-gradient(1200px 600px at 10% -10%, rgba(56,189,248,.18), transparent), radial-gradient(1000px 400px at 110% 0%, rgba(99,102,241,.15), transparent), radial-gradient(800px 600px at 30% 120%, rgba(236,72,153,.12), transparent)",
+                    },
+                },
+            },
+        };
+    </script>
+
+    <style>
+        html,
+        body {
+            overflow-x: hidden;
+        }
+        .text-gradient {
+            background: linear-gradient(90deg, #93c5fd, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .nav-link {
+            color: rgb(203 213 225);
+            transition: color 0.2s ease;
+        }
+        .nav-link:hover {
+            color: rgb(147 197 253);
+        }
+        .faq-item {
+            transition: all 0.3s ease;
+        }
+        .faq-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body class="bg-surface-50 bg-grid text-slate-100 antialiased relative">
+<div class="fixed inset-0 bg-aurora opacity-80 pointer-events-none"></div>
+<div class="absolute -top-32 -left-20 h-96 w-96 bg-blue-500/10 rounded-full blur-3xl animate-blob"></div>
+<div class="absolute top-40 right-0 h-96 w-96 bg-indigo-500/10 rounded-full blur-3xl animate-blob [animation-delay:2s]"></div>
+
+<header class="sticky top-0 z-50 backdrop-blur-xl bg-surface-100/60 border-b border-white/10">
+    <div class="max-w-6xl mx-auto flex items-center justify-between py-4 px-6">
+        <a href="/" class="flex items-center gap-2">
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-glow">🏒</span>
+            <span class="text-lg font-semibold">Zamboni</span>
+        </a>
+        <nav class="flex gap-6 text-sm font-medium">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/statistics" class="nav-link">Statistics</a>
+            <a href="/faq" class="nav-link text-blue-400">FAQ</a>
+        </nav>
+    </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-6 py-16 relative z-10">
+    <h1 class="text-4xl md:text-6xl font-extrabold text-gradient text-center mb-10 animate-fadeInUp">
+        Frequently Asked Questions
+    </h1>
+    <p class="text-center text-slate-400 max-w-2xl mx-auto mb-16 animate-fadeInUp">
+        Need answers? Here are some common questions users have about Zamboni.
+    </p>
+
+    <div class="space-y-4">
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
+            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
+                <span>What is Zamboni?</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div class="mt-3 text-slate-400 text-sm hidden">
+                This project is a community for NHL (RPCS3) players,
+                focused on online multiplayer revival and community support.
+            </div>
+        </div>
+
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
+            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
+                <span>How do I access player statistics?</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div class="mt-3 text-slate-400 text-sm hidden">
+                You can visit the
+                <a
+                        href="https://zamboni.gg/statistics"
+                        target="_blank"
+                        class="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-4"
+                > statistics page </a
+                >
+                to view player, server and game statistics.
+            </div>
+        </div>
+
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
+            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
+                <span>Can I contribute to the project?</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div class="mt-3 text-slate-400 text-sm hidden">
+                Developers who want to contribute can access the server source
+                <a
+                        href="https://github.com/ZamboniDevelopment"
+                        target="_blank"
+                        class="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-4"
+                > on github.</a
+                >
+            </div>
+        </div>
+
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
+            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
+                <span>Is Zamboni affiliated with EA?</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div class="mt-3 text-slate-400 text-sm hidden">
+                No, Zamboni is not affiliated with or endorsed by EA or EA Sports in anyway.
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="text-center py-8 text-slate-500 text-sm relative z-10">
+    © 2025 Zamboni.gg — Fan-made NHL10 revival project. Not affiliated with or endorsed by EA or EA Sports.
+</footer>
+
+<script>
+    function toggleFAQ(btn) {
+        const answer = btn.nextElementSibling;
+        const icon = btn.querySelector("svg");
+        const isOpen = !answer.classList.contains("hidden");
+
+        document.querySelectorAll(".faq-item div.mt-3").forEach((el) => {
+            el.classList.add("hidden");
+        });
+        document
+            .querySelectorAll(".faq-item svg")
+            .forEach((ic) => ic.classList.remove("rotate-180"));
+
+        if (!isOpen) {
+            answer.classList.remove("hidden");
+            icon.classList.add("rotate-180");
+        }
+    }
+</script>
+</body>
+</html>

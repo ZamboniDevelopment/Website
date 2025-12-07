@@ -1,0 +1,16 @@
+{
+  "name": "zamboni-website",
+  "version": "2.0.0",
+  "author": "dtzdev",
+  "license": "ISC",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "local": "node app.js --local"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
+  }
+}
