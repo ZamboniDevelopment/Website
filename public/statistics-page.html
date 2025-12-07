@@ -121,20 +121,45 @@
             animation: shimmer 1.3s linear infinite;
         }
         body.theme-light {
-            background: #f3f4f6;
-            color: #020617;
+            color: #0f172a !important;
+            background: #f3f4f6 !important;
         }
-        body.theme-light .bg-black\/70,
-        body.theme-light .bg-black\/75,
-        body.theme-light .bg-slate-950\/70 {
+        body.theme-light [class*="bg-black"],
+        body.theme-light [class*="bg-slate-9"],
+        body.theme-light .bg-base-900,
+        body.theme-light .bg-base-950 {
             background-color: #ffffff !important;
         }
-        body.theme-light .border-slate-800 {
-            border-color: #d1d5db !important;
+        body.theme-light .lift,
+        body.theme-light .bg-black\/70,
+        body.theme-light .bg-black\/75,
+        body.theme-light .bg-slate-950\/70,
+        body.theme-light .bg-slate-900,
+        body.theme-light .bg-slate-900\/80,
+        body.theme-light .bg-slate-900\/95 {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
         }
         body.theme-light #sidebar {
             background-color: #fafafa !important;
         }
+        body.theme-light [class*="border-slate"] {
+            border-color: #d1d5db !important;
+        }
+        body.theme-light .text-slate-100,
+        body.theme-light .text-slate-200,
+        body.theme-light .text-slate-300,
+        body.theme-light .text-slate-400,
+        body.theme-light .text-slate-500 {
+            color: #0f172a !important;
+        }
+        body.theme-light .text-slate-600 {
+            color: #475569 !important;
+        }
+        body.theme-light {
+            background: #f3f4f6 !important;
+        }
+
     </style>
 </head>
 
