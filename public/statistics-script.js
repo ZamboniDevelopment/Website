@@ -55,7 +55,7 @@ const App = (() => {
     const STATE = {
         apiVersion: "nhl10",
 
-        basePath: "https://zamboni.gg/",
+        basePath: "https://zamboni.gg",
         cacheTTL: 8000,
         cache: new Map(),
 
