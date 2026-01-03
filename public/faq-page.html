@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Zamboni - FAQ</title>
 
-    <meta name="description" content="Frequently Asked Questions about Zamboni" />
-    <meta name="theme-color" content="#60a5fa" />
+    <meta name="description" content="Frequently Asked Questions about the Zamboni NHL revival project." />
+    <meta name="theme-color" content="#0b1224" />
     <meta name="robots" content="index,follow" />
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,33 +16,38 @@
                 extend: {
                     fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui"] },
                     colors: {
-                        surface: { 50: "#0b1220", 100: "#0e1526" },
-                        primary: { 500: "#60a5fa" },
+                        surface: {
+                            50: "#070b16",
+                            100: "#0b1224",
+                        },
+                        primary: {
+                            400: "#7aa2ff",
+                            500: "#4f7cff",
+                            600: "#355ddb",
+                        },
                     },
                     boxShadow: {
-                        glow: "0 10px 30px -12px rgb(59 130 246 / 0.35)",
-                        card: "0 8px 40px -12px rgb(0 0 0 / 0.4)",
+                        card: "0 10px 35px -15px rgba(0,0,0,0.6)",
                     },
                     keyframes: {
                         fadeInUp: {
-                            "0%": { opacity: 0, transform: "translateY(20px)" },
+                            "0%": { opacity: 0, transform: "translateY(16px)" },
                             "100%": { opacity: 1, transform: "translateY(0)" },
                         },
                         blob: {
                             "0%": { transform: "translate(0,0) scale(1)" },
-                            "33%": { transform: "translate(30px,-40px) scale(1.05)" },
-                            "66%": { transform: "translate(-30px,20px) scale(0.95)" },
+                            "50%": { transform: "translate(20px,-30px) scale(1.05)" },
                             "100%": { transform: "translate(0,0) scale(1)" },
                         },
                     },
                     animation: {
                         fadeInUp: "fadeInUp .6s ease-out both",
-                        blob: "blob 14s ease-in-out infinite",
+                        blob: "blob 16s ease-in-out infinite",
                     },
                     backgroundImage: {
-                        grid: "radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.06) 1px, transparent 0)",
+                        grid: "radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.05) 1px, transparent 0)",
                         aurora:
-                            "radial-gradient(1200px 600px at 10% -10%, rgba(56,189,248,.18), transparent), radial-gradient(1000px 400px at 110% 0%, rgba(99,102,241,.15), transparent), radial-gradient(800px 600px at 30% 120%, rgba(236,72,153,.12), transparent)",
+                            "radial-gradient(1200px 600px at 10% -10%, rgba(79,124,255,.18), transparent), radial-gradient(1000px 400px at 110% 0%, rgba(53,93,219,.14), transparent)",
                     },
                 },
             },
@@ -50,157 +55,158 @@
     </script>
 
     <style>
-        html,
-        body {
-            overflow-x: hidden;
-        }
+        html, body { overflow-x: hidden; }
+
         .text-gradient {
-            background: linear-gradient(90deg, #93c5fd, #a78bfa, #f472b6);
+            background: linear-gradient(90deg, #dbe7ff, #8fb3ff, #5b7cfa);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
+
         .nav-link {
             color: rgb(203 213 225);
-            transition: color 0.2s ease;
+            transition: color .2s ease;
         }
         .nav-link:hover {
-            color: rgb(147 197 253);
+            color: #7aa2ff;
         }
+
         .faq-item {
-            transition: all 0.3s ease;
+            transition: background-color .25s ease;
         }
         .faq-item:hover {
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(255,255,255,0.04);
         }
     </style>
 </head>
 
 <body class="bg-surface-50 bg-grid text-slate-100 antialiased relative">
-<div class="fixed inset-0 bg-aurora opacity-80 pointer-events-none"></div>
-<div class="absolute -top-32 -left-20 h-96 w-96 bg-blue-500/10 rounded-full blur-3xl animate-blob"></div>
-<div class="absolute top-40 right-0 h-96 w-96 bg-indigo-500/10 rounded-full blur-3xl animate-blob [animation-delay:2s]"></div>
 
-<header class="sticky top-0 z-50 backdrop-blur-xl bg-surface-100/60 border-b border-white/10">
+<div class="fixed inset-0 bg-aurora opacity-80 pointer-events-none"></div>
+<div class="absolute -top-32 -left-20 h-96 w-96 bg-primary-500/10 rounded-full blur-3xl animate-blob"></div>
+<div class="absolute top-40 right-0 h-96 w-96 bg-primary-600/10 rounded-full blur-3xl animate-blob"></div>
+
+<header class="sticky top-0 z-50 backdrop-blur-xl bg-surface-100/70 border-b border-white/10">
     <div class="max-w-6xl mx-auto flex items-center justify-between py-4 px-6">
         <a href="/" class="flex items-center gap-2">
-            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-glow">🏒</span>
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow">
+                🏒
+            </span>
             <span class="text-lg font-semibold">Zamboni</span>
         </a>
         <nav class="flex gap-6 text-sm font-medium">
             <a href="/" class="nav-link">Home</a>
             <a href="/statistics" class="nav-link">Statistics</a>
-            <a href="/faq" class="nav-link text-blue-400">FAQ</a>
+            <a href="/faq" class="nav-link text-primary-400">FAQ</a>
         </nav>
     </div>
 </header>
 
-<main class="max-w-4xl mx-auto px-6 py-16 relative z-10">
-    <h1 class="text-4xl md:text-6xl font-extrabold text-gradient text-center mb-10 animate-fadeInUp">
+<main class="max-w-4xl mx-auto px-6 py-20 relative z-10">
+    <h1 class="text-4xl md:text-6xl font-extrabold text-gradient text-center mb-8 animate-fadeInUp">
         Frequently Asked Questions
     </h1>
-    <p class="text-center text-slate-400 max-w-2xl mx-auto mb-16 animate-fadeInUp">
-        Need answers? Here are some common questions users have about Zamboni.
+    <p class="text-center text-slate-400 max-w-2xl mx-auto mb-14 animate-fadeInUp">
+        Answers to common questions about Zamboni, supported NHL titles,
+        and how to get started.
     </p>
 
     <div class="space-y-4">
-        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
-            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
-                <span>What is Zamboni?</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <!-- FAQ ITEM -->
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp">
+            <button class="w-full flex justify-between items-center text-left font-semibold text-lg" onclick="toggleFAQ(this)">
+                <span class="text-gradient">What is Zamboni?</span>
+                <svg class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
             <div class="mt-3 text-slate-400 text-sm hidden">
-                This project is a community for NHL (RPCS3) players,
-                focused on online multiplayer revival and community support.
+                Zamboni is a community-driven project focused on reviving
+                online features for classic NHL titles on RPCS3.
+                Currently supported games include NHL 10, NHL 11,
+                NHL 14, and NHL Legacy Edition.
             </div>
         </div>
 
-        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
-            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
-                <span>How can I play NHL 10/11 Online on my PC?</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp">
+            <button class="w-full flex justify-between items-center text-left font-semibold text-lg" onclick="toggleFAQ(this)">
+                <span class="text-gradient">How do I play online on PC?</span>
+                <svg class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
             <div class="mt-3 text-slate-400 text-sm hidden">
-                First, go ahead and join our Discord. Navigate to the 'how-to-play'
-                channel for step-by-step instructions on how to get started.
-                Note: you will need to download the PS3 Emulator RPCS3 and
-                legally obtain a copy of NHL 10/NHL 11 and install it on your PC.
-                Once you've followed the 'how-to-play' steps by applying the game patch
-                and configuring network settings, you're ready to play!
+                Join our Discord and follow the step-by-step guides in
+                the <em>how-to-play</em> channel.
+                You’ll need RPCS3 and a legally obtained copy of the game.
+                After applying the network patch and configuration,
+                you’re ready to play online.
             </div>
         </div>
 
-        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
-            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
-                <span>How do I access player statistics?</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp">
+            <button class="w-full flex justify-between items-center text-left font-semibold text-lg" onclick="toggleFAQ(this)">
+                <span class="text-gradient">Where can I see statistics?</span>
+                <svg class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
             <div class="mt-3 text-slate-400 text-sm hidden">
-                You can visit the
-                <a
-                        href="https://zamboni.gg/statistics"
-                        target="_blank"
-                        class="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-4"
-                > statistics page </a
-                >
-                to view player, server and game statistics.
+                Visit the
+                <a href="/statistics" class="text-primary-400 hover:text-primary-300 underline underline-offset-4">
+                    statistics page
+                </a>
+                to view player, game, and server data.
             </div>
         </div>
 
-        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
-            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
-                <span>Can I contribute to the project?</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp">
+            <button class="w-full flex justify-between items-center text-left font-semibold text-lg" onclick="toggleFAQ(this)">
+                <span class="text-gradient">Can I contribute?</span>
+                <svg class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
             <div class="mt-3 text-slate-400 text-sm hidden">
-                Developers who want to contribute can access the server source
-                <a
-                        href="https://github.com/ZamboniDevelopment"
-                        target="_blank"
-                        class="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-4"
-                > on github.</a
-                >
+                Yes! Zamboni is open source.
+                Developers can browse the code and contribute via
+                <a href="https://github.com/ZamboniDevelopment"
+                   class="text-primary-400 hover:text-primary-300 underline underline-offset-4">
+                    GitHub
+                </a>.
             </div>
         </div>
 
-        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp [animation-delay:.3s]">
-            <button class="w-full text-left flex justify-between items-center font-semibold text-lg text-gradient" onclick="toggleFAQ(this)">
-                <span>Is Zamboni affiliated with EA?</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="faq-item rounded-xl border border-white/10 bg-white/5 p-5 shadow-card animate-fadeInUp">
+            <button class="w-full flex justify-between items-center text-left font-semibold text-lg" onclick="toggleFAQ(this)">
+                <span class="text-gradient">Is this affiliated with EA?</span>
+                <svg class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
             <div class="mt-3 text-slate-400 text-sm hidden">
-                No, Zamboni is not affiliated with or endorsed by EA or EA Sports in anyway.
+                No. Zamboni is a fan-made project and is not affiliated
+                with or endorsed by EA or EA Sports.
             </div>
         </div>
     </div>
 </main>
 
 <footer class="text-center py-8 text-slate-500 text-sm relative z-10">
-    © 2025 Zamboni.gg — Fan-made NHL10 revival project. Not affiliated with or endorsed by EA or EA Sports.
+    © 2026 Zamboni.gg — Fan-made NHL10 revival project. Not affiliated with or endorsed by EA or EA Sports.
 </footer>
 
 <script>
-    function toggleFAQ(btn) {
-        const answer = btn.nextElementSibling;
-        const icon = btn.querySelector("svg");
+    function toggleFAQ(button) {
+        const item = button.parentElement;
+        const answer = item.querySelector("div.mt-3");
+        const icon = button.querySelector("svg");
+
         const isOpen = !answer.classList.contains("hidden");
 
-        document.querySelectorAll(".faq-item div.mt-3").forEach((el) => {
-            el.classList.add("hidden");
-        });
-        document
-            .querySelectorAll(".faq-item svg")
-            .forEach((ic) => ic.classList.remove("rotate-180"));
+        document.querySelectorAll(".faq-item div.mt-3").forEach(el => el.classList.add("hidden"));
+        document.querySelectorAll(".faq-item svg").forEach(ic => ic.classList.remove("rotate-180"));
 
         if (!isOpen) {
             answer.classList.remove("hidden");
@@ -208,5 +214,6 @@
         }
     }
 </script>
+
 </body>
 </html>

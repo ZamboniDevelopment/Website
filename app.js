@@ -54,7 +54,8 @@ if (isLocal) {
         [
             /^\/nhl10\/.*/,
             /^\/nhl11\/.*/,
-            /^\/legacy\/.*/,
+            /^\/nhl14\/.*/,
+            /^\/nhllegacy\/.*/,
             /^\/api\/.*/
         ],
         proxyHandler

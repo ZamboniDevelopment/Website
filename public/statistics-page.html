@@ -241,9 +241,17 @@
                     </div>
 
                     <div
-                            class="px-3 py-2 text-slate-500 bg-slate-950 cursor-not-allowed"
+                            data-value="nhl14"
+                            class="px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
                     >
-                        NHL Legacy (Soon™)
+                        NHL 14
+                    </div>
+
+                    <div
+                            data-value="nhllegacy"
+                            class="px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
+                    >
+                        NHL Legacy
                     </div>
                 </div>
             </div>
@@ -282,18 +290,22 @@
                 </button>
 
                 <a
-                        href="https://discord.gg/FgPY7tAFEJ"
+                        href="https://discord.com/invite/FgPY7tAFEJ"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="tab-btn w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-indigo-500/20 focus-ring flex items-center gap-2 text-indigo-300 font-medium"
-                >Join Discord!</a
+                        class="w-full rounded-lg px-3 py-2 text-left text-sm
+         flex items-center gap-2 text-indigo-300 font-medium
+         hover:bg-indigo-500/20"
+                        onclick="event.stopPropagation();"
                 >
+                    Join Discord
+                </a>
             </nav>
 
             <footer
                     class="mt-auto border-t border-slate-800 px-5 py-4 text-xs text-slate-600 animate-fade"
             >
-                Zamboni Statistics<br />Custom NHL10/NHL11 server
+                Zamboni Statistics<br />Custom NHL10, NHL11, NHL14 and NHL Legacy server
             </footer>
         </div>
     </aside>

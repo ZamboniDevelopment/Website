@@ -1166,8 +1166,19 @@ const App = (() => {
     };
 
     const addEvents = () => {
+        document.querySelectorAll('a[href*="discord"]').forEach(a => {
+            a.addEventListener("click", e => {
+                e.stopPropagation();
+            });
+        });
         DOM.tabs.forEach((btn) =>
-            btn.addEventListener("click", () => selectTab(btn.dataset.tab))
+            btn.addEventListener("click", (e) => {
+                if (btn.tagName === "A") return;
+                const tab = btn.dataset.tab;
+                if (!tab) return;
+                e.preventDefault();
+                selectTab(tab);
+            })
         );
         DOM.sidebarClose?.addEventListener("click", (e) => {
             e.stopPropagation();
