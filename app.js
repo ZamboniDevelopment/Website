@@ -26,7 +26,7 @@ if (isLocal) {
     const proxyHandler = async (req, res) => {
         const target = `https://zamboni.gg${req.originalUrl}`;
         const start = Date.now();
-        console.log(`🔄 Proxying -> [${req.method}] ${target}`);
+        console.log(`Proxying -> [${req.method}] ${target}`);
         try {
             const r = await fetch(target);
             const data = await r.text();
@@ -43,7 +43,7 @@ if (isLocal) {
         } catch (e) {
             const ms = Date.now() - start;
             console.log(
-                `FAILED ← (${ms}ms)\n` +
+                `FAILED <- (${ms}ms)\n` +
                 `Error: ${e.message}\n` +
                 "-----------------------------------------"
             );
@@ -62,4 +62,4 @@ if (isLocal) {
     );
 }
 
-app.listen(port, () => console.log(`→ http://localhost:${port} (${isLocal ? "PROXY" : "PRODUCTION"})`));
+app.listen(port, () => console.log(`--> http://localhost:${port} (${isLocal ? "PROXY" : "PRODUCTION"})`));

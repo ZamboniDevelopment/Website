@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8"/>
     <meta
             name="viewport"
             content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -12,16 +12,16 @@
             name="description"
             content="Zamboni's Statistics for NHL10/NHL11. Live server status, games, and player statistics."
     />
-    <meta name="robots" content="index,follow" />
-    <meta name="theme-color" content="#020617" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="robots" content="index,follow"/>
+    <meta name="theme-color" content="#020617"/>
+    <link rel="icon" type="image/png" href="/favicon.png"/>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+                    fontFamily: {sans: ["Inter", "system-ui", "sans-serif"]},
                     colors: {
                         base: {
                             950: "#020617",
@@ -34,31 +34,31 @@
                         card: "0 18px 45px rgba(0,0,0,0.60)",
                         subtle: "0 10px 30px rgba(0,0,0,0.45)",
                     },
-                    borderRadius: { xl2: "1.25rem" },
+                    borderRadius: {xl2: "1.25rem"},
                     keyframes: {
                         shimmer: {
-                            "0%": { backgroundPosition: "-200% 0" },
-                            "100%": { backgroundPosition: "200% 0" },
+                            "0%": {backgroundPosition: "-200% 0"},
+                            "100%": {backgroundPosition: "200% 0"},
                         },
                         fade: {
-                            "0%": { opacity: "0" },
-                            "100%": { opacity: "1" },
+                            "0%": {opacity: "0"},
+                            "100%": {opacity: "1"},
                         },
                         slideup: {
-                            "0%": { opacity: "0", transform: "translateY(12px)" },
-                            "100%": { opacity: "1", transform: "translateY(0)" },
+                            "0%": {opacity: "0", transform: "translateY(12px)"},
+                            "100%": {opacity: "1", transform: "translateY(0)"},
                         },
                         slidedown: {
-                            "0%": { opacity: "0", transform: "translateY(-12px)" },
-                            "100%": { opacity: "1", transform: "translateY(0)" },
+                            "0%": {opacity: "0", transform: "translateY(-12px)"},
+                            "100%": {opacity: "1", transform: "translateY(0)"},
                         },
                         pop: {
-                            "0%": { opacity: "0", transform: "scale(0.94)" },
-                            "100%": { opacity: "1", transform: "scale(1)" },
+                            "0%": {opacity: "0", transform: "scale(0.94)"},
+                            "100%": {opacity: "1", transform: "scale(1)"},
                         },
                         float: {
-                            "0%,100%": { transform: "translateY(0)" },
-                            "50%": { transform: "translateY(-6px)" },
+                            "0%,100%": {transform: "translateY(0)"},
+                            "50%": {transform: "translateY(-6px)"},
                         },
                     },
                     animation: {
@@ -84,6 +84,7 @@
             );
             transition: background 0.3s ease, transform 0.3s ease;
         }
+
         .tab-btn[href*="discord"]:hover {
             background: linear-gradient(
                     90deg,
@@ -92,21 +93,26 @@
             );
             transform: translateY(-1px);
         }
+
         body {
             background: radial-gradient(circle at top, #020617, #000);
         }
+
         .lift {
             transition: all 0.22s ease-out;
         }
+
         .lift:hover {
             transform: translateY(-4px);
             box-shadow: 0 22px 55px rgba(0, 0, 0, 0.65);
         }
+
         .skeleton {
             position: relative;
             overflow: hidden;
             background: rgba(148, 163, 184, 0.06);
         }
+
         .skeleton::after {
             content: "";
             position: absolute;
@@ -120,16 +126,19 @@
             background-size: 200% 100%;
             animation: shimmer 1.3s linear infinite;
         }
+
         body.theme-light {
             color: #0f172a !important;
             background: #f3f4f6 !important;
         }
+
         body.theme-light [class*="bg-black"],
         body.theme-light [class*="bg-slate-9"],
         body.theme-light .bg-base-900,
         body.theme-light .bg-base-950 {
             background-color: #ffffff !important;
         }
+
         body.theme-light .lift,
         body.theme-light .bg-black\/70,
         body.theme-light .bg-black\/75,
@@ -140,12 +149,15 @@
             background-color: #ffffff !important;
             color: #0f172a !important;
         }
+
         body.theme-light #sidebar {
             background-color: #fafafa !important;
         }
+
         body.theme-light [class*="border-slate"] {
             border-color: #d1d5db !important;
         }
+
         body.theme-light .text-slate-100,
         body.theme-light .text-slate-200,
         body.theme-light .text-slate-300,
@@ -153,9 +165,11 @@
         body.theme-light .text-slate-500 {
             color: #0f172a !important;
         }
+
         body.theme-light .text-slate-600 {
             color: #475569 !important;
         }
+
         body.theme-light {
             background: #f3f4f6 !important;
         }
@@ -223,8 +237,8 @@
 
                 <div
                         id="versionMenu"
-                        class="hidden absolute left-0 right-0 mt-1 rounded-lg overflow-hidden
-          border border-slate-800 bg-slate-900/95 text-xs shadow-card animate-pop z-[999]"
+                        class="hidden mt-1 rounded-lg overflow-hidden
+  border border-slate-800 bg-slate-900/95 text-xs shadow-card animate-pop"
                 >
                     <div
                             data-value="nhl10"
@@ -235,9 +249,9 @@
 
                     <div
                             data-value="nhl11"
-                            class="px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
+                            class="px-3 py-2 text-slate-500 cursor-not-allowed opacity-50 pointer-events-none"
                     >
-                        NHL 11
+                        NHL 11 (Broken)
                     </div>
 
                     <div
@@ -252,6 +266,44 @@
                             class="px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
                     >
                         NHL Legacy
+                    </div>
+                </div>
+            </div>
+            <div
+                    id="vsSoWrapper"
+                    class="px-5 mt-3 animate-pop hidden pointer-events-auto relative z-40"
+            >
+                <label class="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+                    Game Mode
+                </label>
+
+                <button
+                        id="modeToggleBtn"
+                        type="button"
+                        class="mt-1 flex w-full items-center justify-between rounded-lg
+           border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-200
+           transition-all hover:bg-slate-800"
+                >
+                    <span id="modeLabel">VS</span>
+                    <span class="text-slate-500">▼</span>
+                </button>
+
+                <div
+                        id="modeMenu"
+                        class="hidden absolute left-0 right-0 mt-1 rounded-lg overflow-hidden
+           border border-slate-800 bg-slate-900/95 text-xs shadow-card animate-pop z-[999]"
+                >
+                    <div
+                            data-mode="VS"
+                            class="px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
+                    >
+                        VS
+                    </div>
+                    <div
+                            data-mode="SO"
+                            class="px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
+                    >
+                        SO
                     </div>
                 </div>
             </div>
@@ -305,7 +357,7 @@
             <footer
                     class="mt-auto border-t border-slate-800 px-5 py-4 text-xs text-slate-600 animate-fade"
             >
-                Zamboni Statistics<br />Custom NHL10, NHL11, NHL14 and NHL Legacy server
+                Zamboni Statistics<br/>Custom NHL10, NHL11, NHL14 and NHL Legacy server
             </footer>
         </div>
     </aside>
@@ -352,20 +404,6 @@
                             </div>
 
                             <div class="flex items-center gap-2 animate-slideup">
-                                <label class="text-[11px] flex items-center gap-1">
-                                    <input id="autoRefreshToggle" type="checkbox" />
-                                    Auto
-                                </label>
-
-                                <select
-                                        id="autoRefreshInterval"
-                                        class="bg-slate-900 text-[11px] rounded-lg px-1 py-1"
-                                >
-                                    <option value="5000">5s</option>
-                                    <option value="10000">10s</option>
-                                    <option value="15000" selected>15s</option>
-                                </select>
-
                                 <button
                                         id="statusRefresh"
                                         class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs animate-pop hover:animate-float transition-all"
@@ -403,16 +441,6 @@
                             >
                                 <p class="text-[11px] text-slate-500">Active Games</p>
                                 <p id="activeGames" class="text-lg font-semibold">—</p>
-                            </div>
-                        </div>
-
-                        <div class="mt-5 animate-slideup">
-                            <p class="text-[11px] text-slate-500 mb-1">Uptime</p>
-                            <div class="h-1.5 w-full rounded-full bg-slate-800">
-                                <div
-                                        id="uptimeBar"
-                                        class="h-full w-0 bg-gradient-to-r from-emerald-400 to-blue-400"
-                                ></div>
                             </div>
                         </div>
                     </div>

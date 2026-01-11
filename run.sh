@@ -42,15 +42,13 @@ if [ ! -f package.json ]; then
     warn "Skipping dependency installation."
 else
     if [ ! -d node_modules ]; then
-        warn "node_modules missing — installing packages..."
+        warn "node_modules missing - installing packages..."
         npm install
         ok "Packages installed!"
     else
-        log "node_modules exists — checking integrity..."
-
-        # quick check to detect corrupt installs
+        log "node_modules exists - checking integrity..."
         if ! npm ls >/dev/null 2>&1; then
-            warn "Dependency tree broken — reinstalling clean!"
+            warn "Dependency tree broken - reinstalling clean!"
             rm -rf node_modules package-lock.json
             npm install
             ok "Packages reinstalled successfully."
