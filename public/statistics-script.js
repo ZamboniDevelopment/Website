@@ -349,6 +349,9 @@ const App = (() => {
             force,
             ttl: 60000,
         });
+
+        // null checks and remove null values from db lists (TODO: move to backend)
+        STATE.allPlayers = STATE.allPlayers.filter(item => item !== null)
         renderPlayers();
     };
 
@@ -557,13 +560,15 @@ const App = (() => {
     // Leaderboars logic
     const loadLeaderboards = async (force = false) => {
         // retrieve data via api
-        const data = await fetchJSON(
+        const rawData = await fetchJSON(
             endpoint(`/api/leaderboard/${STATE.leaderboardRange}`),
             {force, ttl: 60000}
         );
 
+        // Remove Null or Empty object entries (TODO: checks to backend)
+        const data = rawData.filter(item => item !== null)
+
         // make top5 of the data
-        // TODO: add catches for nulls or empty objects to fix shitty 11 db problems
         const top5 = data.slice(0, 5);
 
         // Simple category sort
