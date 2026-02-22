@@ -66,6 +66,12 @@ const App = (() => {
         currentProfile: null,
         leaderboardRange: "day",
         activeTab: "status",
+        gameModes: {
+            nhl10: [],
+            nhl11: ["VS", "SO", "OTP"],
+            nhl14: ["VS", "SO"],
+            nhllegacy: ["VS", "SO"]
+        }
     };
 
     // Return endpoint base path
@@ -73,12 +79,8 @@ const App = (() => {
 
     // cachekey
     const cacheKey = (url) => {
-        // Multi mode games with modern apis
-        if (STATE.apiVersion === "nhl14" || STATE.apiVersion === "nhllegacy" || STATE.apiVersion === "nhl11") {
-            return `${url}?mode=${STATE.mode}`;
-        }
-
-        return url;
+        const modes = STATE.gameModes[STATE.apiVersion] || [];
+        return modes.length ? `${url}?mode=${STATE.mode}` : url;
     };
 
     // Helper to make request to api
@@ -110,14 +112,18 @@ const App = (() => {
         return data;
     };
 
-    // Escape html with converting symbols
+    // Helpers to reduce reduntant code parts
     const escapeHtml = (s) =>
         String(s ?? "")
             .replaceAll("&", "&amp;")
             .replaceAll("<", "&lt;")
             .replaceAll(">", "&gt;");
-
-    // Helper to get date
+    const isObject = (v) => v && typeof v === "object" && !Array.isArray(v);
+    const safeArray = (v) => Array.isArray(v) ? v.filter(Boolean) : [];
+    const safeObject = (v) => isObject(v) ? v : {};
+    const safeNumber = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
+    const safeString = (v, fallback = "-") =>
+        typeof v === "string" && v.trim().length ? v : fallback;
     const safeDate = (d) => (d ? new Date(d).toLocaleString() : "-");
 
     // handle selecting tabs
@@ -198,16 +204,12 @@ const App = (() => {
     };
 
     const extractGames = (data) => {
-        if (!data) return [];
-        // Modern way for multi mode games (vs so top)
-        // Support Games: NHL14 / Legacy / NHL11
-        if (STATE.apiVersion === "nhl14" || STATE.apiVersion === "nhllegacy" || STATE.apiVersion === "nhl11") {
-            const key = STATE.mode.toLowerCase()
-            return Array.isArray(data[key]) ? data[key] : [];
+        const modes = STATE.gameModes[STATE.apiVersion] || [];
+        if (!modes.length) {
+            return safeArray(data);
         }
-        // Legacy Way for simpler legacy simple mode games
-        // NHL10
-        return Array.isArray(data) ? data : [];
+        const key = STATE.mode?.toLowerCase();
+        return safeArray(data?.[key]);
     };
 
     const loadGames = async (force = false) => {
@@ -240,9 +242,9 @@ const App = (() => {
             DOM.gamesList.innerHTML = games
                 .slice(0, 30)
                 .map((g) => {
-                    const teams = Array.isArray(g.teams) ? g.teams : [];
-                    const home = teams[0] || {};
-                    const away = teams[1] || null;
+                    const teams = safeArray(g?.teams);
+                    const home = safeObject(teams[0]);
+                    const away = safeObject(teams[1]);
 
                     const homeScore = home.score ?? 0;
                     const awayScore = away?.score ?? 0;
@@ -345,13 +347,12 @@ const App = (() => {
     // request player from api
     const loadPlayers = async (force = false) => {
         if (!force && STATE.allPlayers.length) return renderPlayers();
-        STATE.allPlayers = await fetchJSON(endpoint("/api/players"), {
+        const raw = await fetchJSON(endpoint("/api/players"), {
             force,
-            ttl: 60000,
+            ttl: 60000
         });
-
-        // null checks and remove null values from db lists (TODO: move to backend)
-        STATE.allPlayers = STATE.allPlayers.filter(item => item !== null)
+        STATE.allPlayers = safeArray(raw)
+            .filter(p => typeof p === "string" && p.trim().length);
         renderPlayers();
     };
 
@@ -393,33 +394,26 @@ const App = (() => {
                 {force: false, ttl: 15000}
             );
 
-            // isModern is for games with both vs and otp modes
-            const isModern =
-                STATE.apiVersion === "nhl14" || STATE.apiVersion === "nhllegacy" || STATE.apiVersion === "nhl11";
-
-            // isModernOTP for games with otp mode support
-            const isModernOTP =
-                STATE.apiVersion === "nhl11";
+            const supportedModes = STATE.gameModes[STATE.apiVersion] || [];
+            const isModern = supportedModes.length > 0;
+            const isModernOTP = supportedModes.includes("OTP");
 
             const totalGames = profile.totalGames ?? 0;
             const totalGoals = profile.totalGoals ?? 0;
             const avgGoals =
                 totalGames > 0 ? (totalGoals / totalGames).toFixed(2) : "0.00";
 
-            const vs = profile.VS || {games: 0, goals: 0};
-            const so = profile.SO || {games: 0, goals: 0};
-            const otp = profile.OTP || {games: 0, goals: 0};
+            const vs = safeObject(profile?.VS);
+            const so = safeObject(profile?.SO);
+            const otp = safeObject(profile?.OTP);
 
             let historyList = [];
 
-            // in case of modern titles with multiple modes, filter by them to lists
             if (isModern) {
                 const key = STATE.mode.toLowerCase();
-                historyList = Array.isArray(historyRaw?.[key])
-                    ? historyRaw[key]
-                    : [];
+                historyList = safeArray(historyRaw?.[key]);
             } else {
-                historyList = Array.isArray(historyRaw) ? historyRaw : [];
+                historyList = safeArray(historyRaw);
             }
 
             // sort by latest to not so latest
@@ -559,71 +553,87 @@ const App = (() => {
 
     // Leaderboars logic
     const loadLeaderboards = async (force = false) => {
-        // retrieve data via api
-        const rawData = await fetchJSON(
+        const raw = await fetchJSON(
             endpoint(`/api/leaderboard/${STATE.leaderboardRange}`),
-            {force, ttl: 60000}
+            { force, ttl: 60000 }
         );
 
-        // Remove Null or Empty object entries (TODO: checks to backend)
-        const data = rawData.filter(item => item !== null)
-
-        // make top5 of the data
+        const data = safeArray(raw);
         const top5 = data.slice(0, 5);
-
-        // Simple category sort
-        // TODO: More indepth way to generate these to backend as this is not perfect
         const categories = [
-            {label: "Total Goals", value: (p) => p.totalGoals},
+            {
+                label: "Total Goals",
+                value: (p) => safeNumber(p?.totalGoals)
+            },
             {
                 label: "Goals / Game",
-                value: (p) => (p.totalGoals / p.gamesPlayed).toFixed(2),
+                value: (p) => {
+                    const games = safeNumber(p?.gamesPlayed);
+                    const goals = safeNumber(p?.totalGoals);
+                    return games > 0 ? (goals / games).toFixed(2) : "0.00";
+                }
             },
-            {label: "Games Played", value: (p) => p.gamesPlayed},
+            {
+                label: "Games Played",
+                value: (p) => safeNumber(p?.gamesPlayed)
+            }
         ];
 
-        // render
         DOM.leaderboards.innerHTML = categories.map(cat => `
-          <div class="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 animate-pop">
-            <div class="mb-1 text-[11px] font-medium text-slate-200">
-              ${cat.label}
+      <div class="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 animate-pop">
+        <div class="mb-1 text-[11px] font-medium text-slate-200">
+          ${cat.label}
+        </div>
+        <div class="space-y-1 text-[11px]">
+          ${top5.map((p, i) => `
+            <div class="flex justify-between">
+              <span>${i + 1}. ${escapeHtml(p?.gamertag ?? "Unknown")}</span>
+              <span>${cat.value(p)}</span>
             </div>
-            <div class="space-y-1 text-[11px]">
-              ${top5.map((p, i) => `
-                <div class="flex justify-between">
-                  <span>${i + 1}. ${escapeHtml(p.gamertag)}</span>
-                  <span>${cat.value(p)}</span>
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `).join("");
+          `).join("")}
+        </div>
+      </div>
+    `).join("");
     };
 
     // Game version menu
     const setupVersionMenu = () => {
-        // hide after click
         DOM.versionToggle.onclick = () =>
             DOM.versionMenu.classList.toggle("hidden");
 
-        // reset all and refresh on change
         DOM.versionMenu.querySelectorAll("[data-value]").forEach((i) => {
             i.onclick = () => {
                 STATE.apiVersion = i.dataset.value;
                 DOM.versionLabel.textContent = i.textContent.trim();
+
                 STATE.cache.clear();
                 STATE.allPlayers = [];
                 STATE.currentProfile = null;
-                STATE.mode = "VS";
-                DOM.modeLabel.textContent = "VS";
+
+                const modes = STATE.gameModes[STATE.apiVersion] || [];
+
+                if (modes.length) {
+                    STATE.mode = modes[0];
+                    DOM.modeLabel.textContent = STATE.mode;
+                    DOM.vsSoWrapper.classList.remove("hidden");
+
+                    // hide/show specific mode options
+                    DOM.modeMenu.querySelectorAll("[data-mode]").forEach(btn => {
+                        btn.classList.toggle(
+                            "hidden",
+                            !modes.includes(btn.dataset.mode)
+                        );
+                    });
+                } else {
+                    DOM.vsSoWrapper.classList.add("hidden");
+                }
+
                 if (DOM.profileOverview) {
                     DOM.profileOverview.innerHTML =
                         '<div class="text-xs text-slate-500">Select a player…</div>';
                 }
                 if (DOM.profileRaw) DOM.profileRaw.textContent = "";
-                const isModern =
-                    STATE.apiVersion === "nhl14" || STATE.apiVersion === "nhllegacy" || STATE.apiVersion === "nhl11";
-                DOM.vsSoWrapper.classList.toggle("hidden", !isModern);
+
                 if (STATE.activeTab === "status") loadStatus(true);
                 if (STATE.activeTab === "games") loadGames(true);
                 if (STATE.activeTab === "players") {
