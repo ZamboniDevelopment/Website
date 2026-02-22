@@ -56,6 +56,7 @@ const App = (() => {
     };
 
     // Website state
+    // NOTE: If running locally on proxy mode change basePath to just basePath: "",
     const STATE = {
         apiVersion: "nhl10",
         mode: "VS",
@@ -160,7 +161,7 @@ const App = (() => {
 
     const loadStatus = async (force = false) => {
         try {
-            // TODO (too lazy): Update APIService to inclue status and just do: const d = await fetchJSON(endpoint("/status"), { force });
+            // TODO: Update APIService to inclue status and just do: const d = await fetchJSON(endpoint("/status"), { force });
             let d;
             if (STATE.apiVersion === "nhl14") {
                 d = await fetchJSON(STATE.basePath + ":8082/" + STATE.apiVersion + "/status", {force});
