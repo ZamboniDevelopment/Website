@@ -3,780 +3,590 @@
 // copyright all contributors
 
 const App = (() => {
-    // MOST of dom content
-    const DOM = {
-        tabs: document.querySelectorAll(".tab-btn"),
-        pageTitle: document.getElementById("pageTitle"),
 
-        panels: {
-            status: document.getElementById("tab-status"),
-            games: document.getElementById("tab-games"),
-            players: document.getElementById("tab-players"),
+    const $ = id => document.getElementById(id);
+
+    const CFG = {
+        base: "",
+        servers: {
+            nhl10:     { label: "NHL 10",     url: b => `${b}/nhl10/status` },
+            nhl11:     { label: "NHL 11",     url: b => `${b}/nhl11/status` },
+            nhl14:     { label: "NHL 14",     url: b => `${b}:8082/nhl14/status` },
+            nhllegacy: { label: "NHL Legacy", url: b => `${b}:8083/nhllegacy/status` },
         },
-
-        themeToggle: document.getElementById("themeToggle"),
-        themeIcon: document.getElementById("themeIcon"),
-        themeLabel: document.getElementById("themeLabel"),
-
-        menuToggle: document.getElementById("menuToggle"),
-        sidebar: document.getElementById("sidebar"),
-        sidebarClose: document.getElementById("sidebarClose"),
-
-        versionToggle: document.getElementById("versionToggle"),
-        versionMenu: document.getElementById("versionMenu"),
-        versionLabel: document.getElementById("versionLabel"),
-
-        vsSoWrapper: document.getElementById("vsSoWrapper"),
-        modeToggleBtn: document.getElementById("modeToggleBtn"),
-        modeMenu: document.getElementById("modeMenu"),
-        modeLabel: document.getElementById("modeLabel"),
-
-        serverVersion: document.getElementById("serverVersion"),
-        onlineUsersCount: document.getElementById("onlineUsersCount"),
-        onlineUsersText: document.getElementById("onlineUsers"),
-        queuedUsers: document.getElementById("queuedUsers"),
-        activeGames: document.getElementById("activeGames"),
-        statusRefresh: document.getElementById("statusRefresh"),
-
-        gamesList: document.getElementById("gameReportsList"),
-        gamesRefresh: document.getElementById("gameReportsRefresh"),
-
-        playersList: document.getElementById("players"),
-        searchInput: document.getElementById("searchInput"),
-        refreshPlayers: document.getElementById("refreshBtn"),
-
-        leaderboards: document.getElementById("leaderboards"),
-        lbWindowButtons: document.querySelectorAll(".lb-window"),
-
-        profileOverview: document.getElementById("profileOverview"),
-        profileRaw: document.getElementById("profileRaw"),
-        profileTabOverview: document.getElementById("profileTabOverview"),
-        profileTabRaw: document.getElementById("profileTabRaw"),
-        copyJsonBtn: document.getElementById("copyJsonBtn"),
+        modes: {
+            nhl10:     [],
+            nhl11:     ["VS", "SO", "OTP"],
+            nhl14:     ["VS", "SO"],
+            nhllegacy: ["VS", "SO"],
+        },
     };
 
-    // Website state
-    // NOTE: If running locally on proxy mode change basePath to just basePath: "",
     const STATE = {
-        apiVersion: "nhl10",
-        mode: "VS",
-        basePath: "https://zamboni.gg",
-        cache: new Map(),
-        cacheTTL: 8000,
-        allPlayers: [],
-        currentProfile: null,
-        leaderboardRange: "day",
-        activeTab: "status",
-        gameModes: {
-            nhl10: [],
-            nhl11: ["VS", "SO", "OTP"],
-            nhl14: ["VS", "SO"],
-            nhllegacy: ["VS", "SO"]
-        }
+        tab:         "status",
+        gamesVer:   "nhl10",
+        gamesMode:  "VS",
+        playersVer: "nhl10",
+        playersMode:"VS",
+        lbVer:      "nhl10",
+        lbRange:    "day",
+        players:    [],
+        profileName:null,
+        profileJson:null,
+        cache:      new Map(),
     };
 
-    // Return endpoint base path
-    const endpoint = (p) => `${STATE.basePath}/${STATE.apiVersion}${p}`;
+    const TTL = { status: 10000, games: 5000, players: 60000, profile: 30000, history: 15000, lb: 60000 };
 
-    // cachekey
-    const cacheKey = (url) => {
-        const modes = STATE.gameModes[STATE.apiVersion] || [];
-        return modes.length ? `${url}?mode=${STATE.mode}` : url;
-    };
+    const str  = v => (typeof v === "string" && v.trim()) ? v.trim() : "-";
+    const num  = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+    const esc  = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+    const date = d => { try { return d ? new Date(d).toLocaleString() : "-"; } catch { return "-"; } };
+    const arr  = v => Array.isArray(v) ? v.filter(x => x != null) : [];
+    const obj  = v => (v && typeof v === "object" && !Array.isArray(v)) ? v : {};
 
-    // Helper to make request to api
-    const fetchJSON = async (url, {force = false, ttl = STATE.cacheTTL} = {}) => {
-        const key = cacheKey(url);
-        const now = Date.now();
-        const cached = STATE.cache.get(key);
+    const endpoint = (ver, path) => `${CFG.base}/${ver}${path}`;
 
-        // check if cached
-        if (!force && cached && now - cached.time < ttl) {
-            return cached.data;
-        }
-
-        // fetch the url
-        const res = await fetch(url, {headers: {Accept: "application/json"}});
+    const fetchJSON = async (url, ttl = 8000) => {
+        const hit = STATE.cache.get(url);
+        if (hit && Date.now() - hit.t < ttl) return hit.d;
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        // Get json of response
-        let data;
-        try {
-            data = await res.json();
-        } catch (err) {
-            throw new Error(`Failed to parse JSON! | HTTP ${res.status}`);
-        }
-
-        // set cache
-        STATE.cache.set(key, {time: now, data});
-
-        return data;
+        const d = await res.json();
+        STATE.cache.set(url, { t: Date.now(), d });
+        return d;
     };
 
-    // Helpers to reduce reduntant code parts
-    const escapeHtml = (s) =>
-        String(s ?? "")
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;");
-    const isObject = (v) => v && typeof v === "object" && !Array.isArray(v);
-    const safeArray = (v) => Array.isArray(v) ? v.filter(Boolean) : [];
-    const safeObject = (v) => isObject(v) ? v : {};
-    const safeNumber = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
-    const safeString = (v, fallback = "-") =>
-        typeof v === "string" && v.trim().length ? v : fallback;
-    const safeDate = (d) => (d ? new Date(d).toLocaleString() : "-");
+    const bust = url => { STATE.cache.delete(url); };
 
-    // handle selecting tabs
-    const selectTab = (tab) => {
-        STATE.activeTab = tab;
+    const skelBlock = (h, w = "100%") =>
+        `<span class="skel" style="display:block;height:${h}px;width:${w};border-radius:6px;"></span>`;
 
-        // set aria based on status
-        DOM.tabs.forEach((b) =>
-            b.setAttribute("aria-selected", b.dataset.tab === tab)
-        );
+    const errBox = msg =>
+        `<div class="err-box"><span>⚠</span><span>${esc(msg)}</span></div>`;
 
-        // Toggle hidden based on selection
-        Object.entries(DOM.panels).forEach(([k, v]) =>
-            v.classList.toggle("hidden", k !== tab)
-        );
+    const emptyState = (icon, text, hint = "") =>
+        `<div class="empty-state"><span class="empty-icon">${icon}</span>${esc(text)}${hint ? `<span class="empty-hint">${esc(hint)}</span>` : ""}</div>`;
 
-        // Set pagetitle
-        DOM.pageTitle.textContent = tab[0].toUpperCase() + tab.slice(1);
-
-        // Handle selects of tabs
-        if (tab === "status") loadStatus(true);
-        if (tab === "games") loadGames(true);
-        if (tab === "players") {
-            loadPlayers(true);
-            loadLeaderboards(true);
-        }
+    const av = (name, size = 28) => {
+        const init = String(name ?? "?").replace(/[^a-zA-Z0-9]/g, "").slice(0, 2).toUpperCase() || "?";
+        return `<div class="player-av" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px;">${esc(init)}</div>`;
     };
 
-    // unused helper but aint gonna remove cause tf idk
-    const currentGames = (data) => {
-        if (STATE.apiVersion === "nhl10") return data || [];
-        return data?.[STATE.mode] || [];
-    };
+    const statTile = (label, value, sub = "") =>
+        `<div class="stat-tile"><div class="stat-label">${label}</div><div class="stat-val">${esc(String(value))}</div>${sub ? `<div class="stat-sub">${esc(sub)}</div>` : ""}</div>`;
 
     const loadStatus = async (force = false) => {
-        try {
-            // TODO: Update APIService to inclue status and just do: const d = await fetchJSON(endpoint("/status"), { force });
-            let d;
-            if (STATE.apiVersion === "nhl14") {
-                d = await fetchJSON(STATE.basePath + ":8082/" + STATE.apiVersion + "/status", {force});
-            } else if (STATE.apiVersion === "nhllegacy") {
-                d = await fetchJSON(STATE.basePath + ":8083/" + STATE.apiVersion + "/status", {force});
-            } else {
-                d = await fetchJSON(endpoint("/status"), {force});
-            }
-
-            DOM.serverVersion.textContent = d.serverVersion ?? "-";
-            DOM.onlineUsersCount.textContent = d.onlineUsersCount ?? "0";
-            DOM.onlineUsersText.textContent = d.onlineUsers ?? "-";
-            DOM.queuedUsers.textContent = d.queuedUsers ?? "0";
-            DOM.activeGames.textContent = d.activeGames ?? "0";
-
-            if (DOM.uptimeBar) {
-                const pct = 95 + Math.random() * 5;
-                DOM.uptimeBar.style.width = `${pct}%`;
-            }
-        } catch (err) {
-            console.error("Status load failed:", err);
-            DOM.serverVersion.textContent = "Unreachable";
-            DOM.onlineUsersCount.textContent = "-";
-            DOM.onlineUsersText.textContent = "Unavailable";
-            DOM.queuedUsers.textContent = "-";
-            DOM.activeGames.textContent = "-";
-            if (DOM.uptimeBar) DOM.uptimeBar.style.width = "0%";
-
-            if (DOM.panels.status) {
-                DOM.panels.status.querySelectorAll(".status-error").forEach(e => e.remove());
-
-                const errBox = document.createElement("div");
-                errBox.className =
-                    "status-error rounded-lg border border-rose-500/40 bg-rose-500/10 p-4 text-xs text-rose-200 animate-pop";
-                errBox.textContent =
-                    "Failed to load server status. Server may be offline or unreachable.";
-
-                DOM.panels.status.prepend(errBox);
-            }
-        }
-    };
-
-    const extractGames = (data) => {
-        const modes = STATE.gameModes[STATE.apiVersion] || [];
-        if (!modes.length) {
-            return safeArray(data);
-        }
-        const key = STATE.mode?.toLowerCase();
-        return safeArray(data?.[key]);
-    };
-
-    const loadGames = async (force = false) => {
-        if (!DOM.gamesList) return;
-
-        // temporary loading message
-        DOM.gamesList.innerHTML = `
-          <div class="text-xs text-slate-400 p-3 animate-fade">Loading games…</div>
-        `;
-
-        try {
-            // fetch the games via api
-            const data = await fetchJSON(endpoint("/api/games"), {
-                force,
-                ttl: 5000,
-            });
-
-            // external helper for how to group the games by modern or legacy data type
-            const games = extractGames(data);
-
-            // Filler message when empty array is returned via api
-            if (!games.length) {
-                DOM.gamesList.innerHTML = `
-                <div class="text-xs text-slate-400 p-3 animate-fade">
-                    No recent games found.
-                </div>`;
-                return;
-            }
-
-            DOM.gamesList.innerHTML = games
-                .slice(0, 30)
-                .map((g) => {
-                    const teams = safeArray(g?.teams);
-                    const home = safeObject(teams[0]);
-                    const away = safeObject(teams[1]);
-
-                    const homeScore = home.score ?? 0;
-                    const awayScore = away?.score ?? 0;
-
-                    const winner =
-                        away &&
-                        (homeScore > awayScore
-                            ? home.gamertag
-                            : awayScore > homeScore
-                                ? away.gamertag
-                                : null);
-
-                    return `
-                    <div class="rounded-xl border border-slate-800 bg-black/75 p-4 lift animate-pop">
-            
-                      <div class="flex items-center justify-between">
-                        <div class="text-sm font-semibold text-slate-100">
-                          Game #${g.game_id}
-                        </div>
-                        <div class="text-[11px] text-slate-400">
-                          ${escapeHtml(g.status ?? "Unknown")}
-                        </div>
-                      </div>
-            
-                      <div class="mt-1 text-[11px] text-slate-500">
-                        Played: ${safeDate(g.created_at)}
-                      </div>
-            
-                      <div class="mt-3 text-sm font-semibold text-slate-100 grid grid-cols-3 items-center">
-            
-                        <div class="truncate">
-                          ${escapeHtml(home.gamertag ?? "Unknown")}
-                          <span class="text-slate-500 text-[11px]">
-                            (${escapeHtml(home.team_name ?? "Unknown")})
-                          </span>
-                        </div>
-            
-                        <div class="text-base text-center">
-                          ${homeScore}${away ? ` - ${awayScore}` : ""}
-                        </div>
-            
-                        <div class="truncate text-right">
-                          ${ away ? `${escapeHtml(away.gamertag)}
-                                 <span class="text-slate-500 text-[11px]">
-                                   (${escapeHtml(away.team_name)})
-                                 </span>` : `<span class="text-slate-500 text-[11px]">Solo Game</span>`
-                                }
-                        </div>
-            
-                      </div>
-            
-                      <div class="mt-3 grid grid-cols-3 gap-2 text-[11px] text-slate-400">
-                        <div class="rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 flex justify-between">
-                          <span>Goals</span>
-                          <span class="text-slate-100 font-medium">${g.totalGoals ?? 0}</span>
-                        </div>
-                        <div class="rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 flex justify-between">
-                          <span>Avg FPS</span>
-                          <span class="text-slate-100 font-medium">
-                            ${g.avgFps != null ? Math.round(g.avgFps) : "-"}
-                          </span>
-                        </div>
-                        <div class="rounded-md border border-slate-800 bg-slate-950/70 px-2 py-1 flex justify-between">
-                          <span>Latency</span>
-                          <span class="text-slate-100 font-medium">
-                            ${g.avgLatency != null ? Math.round(g.avgLatency) + " ms" : "-"}
-                          </span>
-                        </div>
-                      </div>
-            
-                    </div>
-                  `;
-                })
-                .join("");
-        } catch (err) {
-            // catch when api fails or shitty code on apihandler
-            console.error("Games load failed:", err);
-            DOM.gamesList.innerHTML = `
-              <div class="rounded-lg border border-rose-500/40 bg-rose-500/10
-                p-4 text-xs text-rose-200 animate-pop">
-                Failed to load games. Please try again.
-              </div>
-            `;
-        }
-    };
-
-    // small helper for avatars via name
-    const avatar = (text, size = 48) => {
-        const initials = String(text || "?").slice(0, 2).toUpperCase();
-        return `
-          <span class="inline-flex items-center justify-center rounded-full
-            bg-gradient-to-br from-blue-500/25 to-indigo-500/25
-            border border-white/10 text-sm"
-            style="width:${size}px;height:${size}px">
-            ${escapeHtml(initials)}
-          </span>
-        `;
-    };
-
-    // request player from api
-    const loadPlayers = async (force = false) => {
-        if (!force && STATE.allPlayers.length) return renderPlayers();
-        const raw = await fetchJSON(endpoint("/api/players"), {
-            force,
-            ttl: 60000
-        });
-        STATE.allPlayers = safeArray(raw)
-            .filter(p => typeof p === "string" && p.trim().length);
-        renderPlayers();
-    };
-
-    // render players list
-    const renderPlayers = () => {
-        const q = DOM.searchInput.value.toLowerCase();
-        DOM.playersList.innerHTML = STATE.allPlayers
-            .filter((p) => p.toLowerCase().includes(q))
-            .map(
-                (p) => `
-              <button data-name="${escapeHtml(p)}"
-                class="group flex w-full items-center justify-between rounded-lg
-                border border-slate-800 bg-slate-950/70 px-3 py-2.5
-                hover:bg-slate-950 lift animate-pop">
-                <span class="flex items-center gap-2">
-                  ${avatar(p, 32)}
-                  <span class="truncate font-medium">${escapeHtml(p)}</span>
-                </span>
-                <span class="text-xs text-slate-500">View →</span>
-              </button>
-            `)
-            .join("");
-    };
-
-
-    const loadProfile = async (name) => {
-        try {
-            STATE.currentProfile = name;
-
-            // get profile details via ap
-            const profile = await fetchJSON(
-                endpoint(`/api/player/${encodeURIComponent(name)}`),
-                {force: false, ttl: 30000}
-            );
-
-            // fetch history of user via api
-            const historyRaw = await fetchJSON(
-                endpoint(`/api/user/${profile.userId}/history`),
-                {force: false, ttl: 15000}
-            );
-
-            const supportedModes = STATE.gameModes[STATE.apiVersion] || [];
-            const isModern = supportedModes.length > 0;
-            const isModernOTP = supportedModes.includes("OTP");
-
-            const totalGames = profile.totalGames ?? 0;
-            const totalGoals = profile.totalGoals ?? 0;
-            const avgGoals =
-                totalGames > 0 ? (totalGoals / totalGames).toFixed(2) : "0.00";
-
-            const vs = safeObject(profile?.VS);
-            const so = safeObject(profile?.SO);
-            const otp = safeObject(profile?.OTP);
-
-            let historyList = [];
-
-            if (isModern) {
-                const key = STATE.mode.toLowerCase();
-                historyList = safeArray(historyRaw?.[key]);
-            } else {
-                historyList = safeArray(historyRaw);
-            }
-
-            // sort by latest to not so latest
-            historyList = historyList
-                .slice()
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-            // amount of games to render
-            const historyLimit = isModern ? 10 : 5;
-
-            DOM.profileOverview.innerHTML = `
-                <div class="space-y-4 text-xs animate-fade">
-                
-                  <div class="rounded-xl border border-slate-800
-                    bg-gradient-to-br from-slate-900 to-black p-5 lift animate-pop">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-3">
-                        ${avatar(profile.playerName)}
-                        <div>
-                          <div class="text-lg font-semibold text-slate-100">
-                            ${escapeHtml(profile.playerName)}
-                          </div>
-                          <div class="text-[11px] text-slate-500">
-                            ${totalGames} games • ${totalGoals} goals
-                          </div>
-                          <div class="text-[10px] text-slate-600">
-                            User ID: ${profile.userId}
-                          </div>
-                        </div>
-                      </div>
-                      <div class="flex gap-2">
-                        <button
-                          class="px-2 py-1 text-[11px] rounded-lg border border-slate-700 bg-slate-900/80"
-                          onclick="navigator.clipboard.writeText('${profile.playerName}')">
-                          Copy name
-                        </button>
-                        <button
-                          class="px-2 py-1 text-[11px] rounded-lg border border-slate-700 bg-slate-900/80"
-                          onclick="navigator.clipboard.writeText('${profile.userId}')">
-                          Copy ID
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-               
-                  <div class="grid ${ isModern ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-3" } gap-3">
-                    ${ isModern ? `
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-                      <div class="text-[11px] text-slate-500">VS Games</div>
-                      <div class="text-lg font-semibold text-slate-100">${vs.games}</div>
-                      <div class="text-[11px] text-slate-500">${vs.goals} goals</div>
-                    </div>
-                
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-                      <div class="text-[11px] text-slate-500">SO Games</div>
-                      <div class="text-lg font-semibold text-slate-100">${so.games}</div>
-                      <div class="text-[11px] text-slate-500">${so.goals} goals</div>
-                    </div>
-                    ` : "" }
-                    
-                    ${ isModernOTP ? `
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-                      <div class="text-[11px] text-slate-500">OTP Games</div>
-                      <div class="text-lg font-semibold text-slate-100">${otp.games}</div>
-                      <div class="text-[11px] text-slate-500">${otp.goals} goals</div>
-                    </div>
-                    ` : "" }
-                
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-                      <div class="text-[11px] text-slate-500">Games Played</div>
-                      <div class="text-lg font-semibold text-slate-100">${totalGames}</div>
-                    </div>
-                
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-                      <div class="text-[11px] text-slate-500">Total Goals</div>
-                      <div class="text-lg font-semibold text-slate-100">${totalGoals}</div>
-                    </div>
-                
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-                      <div class="text-[11px] text-slate-500">Goals / Game</div>
-                      <div class="text-lg font-semibold text-slate-100">${avgGoals}</div>
-                    </div>
-                  </div>
-                
-                  <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-4 lift animate-pop">
-                    <div class="text-sm font-semibold mb-3 text-slate-100">
-                      Recent Matches (${isModern ? STATE.mode : "All"})
-                    </div>
-                
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      ${
-                                historyList.length
-                                    ? historyList.slice(0, historyLimit).map(h => `
-                        <div class="rounded-lg border border-slate-800 bg-black/70 p-3 animate-fade">
-                          <div class="flex justify-between text-xs font-medium text-slate-200">
-                            <span>${escapeHtml(profile.playerName)}</span>
-                            <span>${escapeHtml(h.opponent ?? "Unknown")}</span>
-                          </div>
-                
-                          <div class="text-center text-base font-semibold text-slate-100">
-                            ${(h.scor ?? h.score ?? 0)} - ${(h.opponent_score ?? 0)}
-                          </div>
-                
-                          <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>${escapeHtml(h.tnam ?? h.team_name ?? "-")}</span>
-                            <span>${escapeHtml(h.opponent_team ?? "-")}</span>
-                          </div>
-                
-                          <div class="mt-1 text-[10px] text-slate-500">
-                            ${safeDate(h.created_at)}
-                          </div>
-                        </div>
-                      `).join("")
-                                    : `<div class="text-slate-500 text-xs">No matches found.</div>`
-                            }
-                    </div>
-                  </div>
-                
+        const grid = $("serverGrid");
+        grid.innerHTML = Object.entries(CFG.servers).map(([k]) =>
+            `<div class="server-card" id="sc-${k}">
+                <div class="server-card-head">
+                    <span class="server-name">${CFG.servers[k].label}</span>
+                    ${skelBlock(20, "60px")}
                 </div>
-                `;
-            DOM.profileRaw.textContent = JSON.stringify(
-                {profile, history: historyRaw},
-                null,
-                2
-            );
-        } catch (err) {
-            // Catch incase server fails with playerdata
-            console.error("Profile load failed:", err);
-            DOM.profileOverview.innerHTML = `
-              <div class="rounded-lg border border-rose-500/40 bg-rose-500/10
-                p-4 text-xs text-rose-200 animate-pop">
-                Failed to load player profile.
-              </div>
-            `;
-        }
-    };
+                <div class="server-stat-grid">
+                    ${[1,2,3,4].map(() => `<div class="server-stat">${skelBlock(20)} </div>`).join("")}
+                </div>
+            </div>`
+        ).join("");
 
-    // Leaderboars logic
-    const loadLeaderboards = async (force = false) => {
-        const raw = await fetchJSON(
-            endpoint(`/api/leaderboard/${STATE.leaderboardRange}`),
-            { force, ttl: 60000 }
-        );
-
-        const data = safeArray(raw);
-        const top5 = data.slice(0, 5);
-        const categories = [
-            {
-                label: "Total Goals",
-                value: (p) => safeNumber(p?.totalGoals)
-            },
-            {
-                label: "Goals / Game",
-                value: (p) => {
-                    const games = safeNumber(p?.gamesPlayed);
-                    const goals = safeNumber(p?.totalGoals);
-                    return games > 0 ? (goals / games).toFixed(2) : "0.00";
+        await Promise.allSettled(
+            Object.entries(CFG.servers).map(async ([k, s]) => {
+                const url = s.url(CFG.base);
+                if (force) bust(url);
+                const el = $(`sc-${k}`);
+                try {
+                    const d = await fetchJSON(url, TTL.status);
+                    el.innerHTML = `
+                        <div class="server-card-head">
+                            <span class="server-name">${s.label}</span>
+                            <span class="badge badge-on"><span class="dot dot-on"></span> Online</span>
+                        </div>
+                        <div class="server-stat-grid">
+                            <div class="server-stat">
+                                <div class="server-stat-label">Online</div>
+                                <div class="server-stat-val">${num(d.onlineUsersCount)}</div>
+                            </div>
+                            <div class="server-stat">
+                                <div class="server-stat-label">Active Games</div>
+                                <div class="server-stat-val">${num(d.activeGames)}</div>
+                            </div>
+                            <div class="server-stat">
+                                <div class="server-stat-label">Queued</div>
+                                <div class="server-stat-val">${num(d.queuedUsers)}</div>
+                            </div>
+                            <div class="server-stat">
+                                <div class="server-stat-label">Version</div>
+                                <div class="server-stat-val" style="font-size:13px;padding-top:2px;">${esc(str(d.serverVersion))}</div>
+                            </div>
+                        </div>`;
+                } catch (e) {
+                    el.innerHTML = `
+                        <div class="server-card-head">
+                            <span class="server-name">${s.label}</span>
+                            <span class="badge badge-off"><span class="dot dot-off"></span> Unreachable/Offline</span>
+                        </div>
+                        <div style="padding-top:8px;font-size:11px;color:var(--text-3);">Server is unreachable. Please note not all server statuses work currently!</div>`;
                 }
-            },
-            {
-                label: "Games Played",
-                value: (p) => safeNumber(p?.gamesPlayed)
-            }
-        ];
-
-        DOM.leaderboards.innerHTML = categories.map(cat => `
-      <div class="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 animate-pop">
-        <div class="mb-1 text-[11px] font-medium text-slate-200">
-          ${cat.label}
-        </div>
-        <div class="space-y-1 text-[11px]">
-          ${top5.map((p, i) => `
-            <div class="flex justify-between">
-              <span>${i + 1}. ${escapeHtml(p?.gamertag ?? "Unknown")}</span>
-              <span>${cat.value(p)}</span>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    `).join("");
-    };
-
-    // Game version menu
-    const setupVersionMenu = () => {
-        DOM.versionToggle.onclick = () =>
-            DOM.versionMenu.classList.toggle("hidden");
-
-        DOM.versionMenu.querySelectorAll("[data-value]").forEach((i) => {
-            i.onclick = () => {
-                STATE.apiVersion = i.dataset.value;
-                DOM.versionLabel.textContent = i.textContent.trim();
-
-                STATE.cache.clear();
-                STATE.allPlayers = [];
-                STATE.currentProfile = null;
-
-                const modes = STATE.gameModes[STATE.apiVersion] || [];
-
-                if (modes.length) {
-                    STATE.mode = modes[0];
-                    DOM.modeLabel.textContent = STATE.mode;
-                    DOM.vsSoWrapper.classList.remove("hidden");
-
-                    // hide/show specific mode options
-                    DOM.modeMenu.querySelectorAll("[data-mode]").forEach(btn => {
-                        btn.classList.toggle(
-                            "hidden",
-                            !modes.includes(btn.dataset.mode)
-                        );
-                    });
-                } else {
-                    DOM.vsSoWrapper.classList.add("hidden");
-                }
-
-                if (DOM.profileOverview) {
-                    DOM.profileOverview.innerHTML =
-                        '<div class="text-xs text-slate-500">Select a player…</div>';
-                }
-                if (DOM.profileRaw) DOM.profileRaw.textContent = "";
-
-                if (STATE.activeTab === "status") loadStatus(true);
-                if (STATE.activeTab === "games") loadGames(true);
-                if (STATE.activeTab === "players") {
-                    loadPlayers(true);
-                    loadLeaderboards(true);
-                }
-            };
-        });
-    };
-
-    // mode menu for changing game mode type on selected games
-    const setupModeMenu = () => {
-        DOM.modeToggleBtn.onclick = () =>
-            DOM.modeMenu.classList.toggle("hidden");
-
-        DOM.modeMenu.querySelectorAll("[data-mode]").forEach((i) => {
-            i.onclick = () => {
-                STATE.mode = i.dataset.mode;
-                STATE.cache.clear();
-                DOM.modeLabel.textContent = STATE.mode;
-                DOM.modeMenu.classList.add("hidden");
-                if (STATE.activeTab === "games") loadGames(true);
-                if (STATE.activeTab === "players") {
-                    loadLeaderboards(true);
-                    if (STATE.currentProfile) loadProfile(STATE.currentProfile);
-                }
-            };
-        });
-    };
-
-    // load theme on load from localstorage
-    const loadTheme = () => {
-        // NOTE: z_theme as local tests can have "theme" theoretically on other things/projects
-        const saved = localStorage.getItem("z_theme") || "dark";
-        applyTheme(saved);
-    };
-
-    // Applying theme
-    const applyTheme = (theme) => {
-        const body = document.body;
-        if (theme === "light") {
-            body.classList.add("theme-light");
-            if (DOM.themeIcon) DOM.themeIcon.textContent = "☀️";
-            if (DOM.themeLabel) DOM.themeLabel.textContent = "Light";
-        } else {
-            body.classList.remove("theme-light");
-            if (DOM.themeIcon) DOM.themeIcon.textContent = "🌙";
-            if (DOM.themeLabel) DOM.themeLabel.textContent = "Dark";
-        }
-    };
-
-    /// Toggle theme and save to local storage
-    const toggleTheme = () => {
-        const isLight = document.body.classList.contains("theme-light");
-        const next = isLight ? "dark" : "light";
-        applyTheme(next);
-        // NOTE: z_theme as local tests can have "theme" theoretically on other things/projects
-        localStorage.setItem("z_theme", next);
-    };
-
-    const addEvents = () => {
-        // handle tab selects
-        DOM.tabs.forEach((b) =>
-            b.addEventListener("click", () => selectTab(b.dataset.tab))
-        );
-
-        // handle sidebar
-        DOM.menuToggle?.addEventListener("click", () => {
-            if (!DOM.sidebar) return;
-            DOM.sidebar.classList.remove("-translate-x-full");
-        });
-
-        // mobile sidebar
-        document.addEventListener("click", (e) => {
-            if (
-                window.innerWidth < 768 &&
-                DOM.sidebar &&
-                !DOM.sidebar.contains(e.target) &&
-                !DOM.menuToggle.contains(e.target) &&
-                e.target.id !== "sidebarClose"
-            ) {
-                DOM.sidebar.classList.add("-translate-x-full");
-            }
-        });
-
-        // sidebar closing
-        DOM.sidebarClose?.addEventListener("click", (e) => {
-            e.stopPropagation();
-            DOM.sidebar.classList.add("-translate-x-full");
-        });
-
-        // refresh buttons
-        DOM.statusRefresh.onclick = () => loadStatus(true);
-        DOM.gamesRefresh.onclick = () => loadGames(true);
-        DOM.refreshPlayers.onclick = () => loadPlayers(true);
-        DOM.searchInput.oninput = renderPlayers;
-
-        // load player on player click
-        DOM.playersList.onclick = (e) => {
-            const btn = e.target.closest("button[data-name]");
-            if (btn) loadProfile(btn.dataset.name);
-        };
-
-        // handle prove
-        DOM.profileTabOverview.onclick = () => {
-            DOM.profileOverview.classList.remove("hidden");
-            DOM.profileRaw.classList.add("hidden");
-        };
-
-        // handle theme toggle
-        DOM.themeToggle?.addEventListener("click", toggleTheme);
-
-        // handle raw tab
-        DOM.profileTabRaw.onclick = () => {
-            DOM.profileOverview.classList.add("hidden");
-            DOM.profileRaw.classList.remove("hidden");
-        };
-
-        // handle copy json
-        DOM.copyJsonBtn.onclick = () =>
-            navigator.clipboard.writeText(DOM.profileRaw.textContent);
-
-        // handle leaderboard range changes
-        DOM.lbWindowButtons.forEach((btn) =>
-            btn.addEventListener("click", () => {
-                STATE.leaderboardRange = btn.dataset.window;
-                loadLeaderboards(true);
             })
         );
     };
 
-    // init on page load
-    const init = () => {
-        loadTheme();
-        setupVersionMenu();
-        setupModeMenu();
-        addEvents();
-        selectTab(STATE.activeTab);
+    const extractGames = (data, ver, mode) => {
+        const modes = CFG.modes[ver] || [];
+        if (!modes.length) return arr(data);
+        return arr(data?.[mode.toLowerCase()]);
     };
 
-    return {init};
+    const loadGames = async (force = false) => {
+        const ver  = STATE.gamesVer;
+        const mode = STATE.gamesMode;
+        const url  = endpoint(ver, "/api/games");
+        if (force) bust(url);
+
+        $("gamesList").innerHTML = emptyState("🏒", "Loading games...");
+
+        try {
+            const data  = await fetchJSON(url, TTL.games);
+            const games = extractGames(data, ver, mode);
+
+            if (!games.length) {
+                $("gamesList").innerHTML = emptyState("🏒", "No recent games found.", "Check back later or try a different mode.");
+                return;
+            }
+
+            $("gamesList").innerHTML = `<div class="game-list">` + games.slice(0, 30).map(g => {
+                const teams     = arr(g?.teams);
+                const home      = obj(teams[0]);
+                const away      = obj(teams[1]);
+                const homeScore = num(home.score);
+                const awayScore = num(away.score);
+                const hasAway   = typeof away.gamertag === "string" && away.gamertag.trim();
+
+                return `<div class="game-card fade-in">
+                    <div class="game-top">
+                        <span class="game-id">Game #${esc(String(g.game_id ?? "?"))}</span>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:10px;color:var(--text-3);">${date(g.created_at)}</span>
+                            <span class="badge badge-b">${esc(str(g.status))}</span>
+                        </div>
+                    </div>
+                    <div class="game-score-row">
+                        <div>
+                            <div class="game-team">${esc(str(home.gamertag))}</div>
+                            <div class="game-team-sub">${esc(str(home.team_name))}</div>
+                        </div>
+                        <div class="game-score">${homeScore}${hasAway ? ` - ${awayScore}` : ""}</div>
+                        <div class="game-team-r">
+                            ${hasAway
+                    ? `<div class="game-team">${esc(str(away.gamertag))}</div><div class="game-team-sub">${esc(str(away.team_name))}</div>`
+                    : `<div style="font-size:11px;color:var(--text-3);">Solo</div>`
+                }
+                        </div>
+                    </div>
+                    <div class="game-meta">
+                        <div class="game-chip"><span>Goals</span><b>${num(g.totalGoals)}</b></div>
+                        <div class="game-chip"><span>Avg FPS</span><b>${g.avgFps != null ? Math.round(num(g.avgFps)) : "-"}</b></div>
+                        <div class="game-chip"><span>Latency</span><b>${g.avgLatency != null ? Math.round(num(g.avgLatency)) + " ms" : "-"}</b></div>
+                    </div>
+                </div>`;
+            }).join("") + `</div>`;
+
+        } catch (e) {
+            $("gamesList").innerHTML = errBox(`Failed to load games. ${e.message}`);
+        }
+    };
+
+    const loadPlayers = async (force = false) => {
+        const ver = STATE.playersVer;
+        const url = endpoint(ver, "/api/players");
+        if (force) bust(url);
+
+        if (!force && STATE.players.length) { renderPlayers(); return; }
+
+        $("playerList").innerHTML = emptyState("👤", "Loading players...");
+
+        try {
+            const raw = await fetchJSON(url, TTL.players);
+            STATE.players = arr(raw).filter(p => typeof p === "string" && p.trim());
+            renderPlayers();
+        } catch (e) {
+            $("playerList").innerHTML = errBox(`Failed to load players. ${e.message}`);
+        }
+    };
+
+    const renderPlayers = () => {
+        const q    = ($("playerSearch")?.value ?? "").toLowerCase();
+        const list = STATE.players.filter(p => p.toLowerCase().includes(q));
+
+        if (!list.length) {
+            $("playerList").innerHTML = emptyState("🔍", "No players found.", q ? `No results for "${q}"` : "");
+            return;
+        }
+
+        $("playerList").innerHTML = list.map(p =>
+            `<button class="player-btn ${STATE.profileName === p ? "active" : ""}" data-name="${esc(p)}">
+                ${av(p)}
+                <span class="player-name">${esc(p)}</span>
+                <span class="player-arr">›</span>
+            </button>`
+        ).join("");
+    };
+
+    const loadProfile = async name => {
+        STATE.profileName = name;
+        STATE.profileJson = null;
+        renderPlayers();
+
+        const showOverview = () => {
+            $("profileOverview").style.display = "";
+            $("profileRaw").style.display      = "none";
+        };
+
+        $("ptabOverview").classList.add("active");
+        $("ptabRaw").classList.remove("active");
+        showOverview();
+
+        $("profileOverview").innerHTML = `
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    ${av(name, 46)}
+                    <div>
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;">${esc(name)}</div>
+                        ${skelBlock(12, "140px")}
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                    ${[1,2,3].map(() => skelBlock(58)).join("")}
+                </div>
+            </div>`;
+
+        $("profileRaw").textContent = "";
+
+        const ver = STATE.playersVer;
+
+        try {
+            const profileUrl = endpoint(ver, `/api/player/${encodeURIComponent(name)}`);
+            const profile    = await fetchJSON(profileUrl, TTL.profile);
+
+            if (!profile || typeof profile !== "object") throw new Error("Invalid profile response");
+
+            const userId = profile.userId ?? profile.user_id ?? null;
+            let historyRaw = null;
+
+            if (userId != null) {
+                const histUrl = endpoint(ver, `/api/user/${encodeURIComponent(userId)}/history`);
+                historyRaw = await fetchJSON(histUrl, TTL.history).catch(() => null);
+            }
+
+            const modes      = CFG.modes[ver] || [];
+            const isModern   = modes.length > 0;
+            const hasOTP     = modes.includes("OTP");
+            const totalGames = num(profile.totalGames);
+            const totalGoals = num(profile.totalGoals);
+            const avgGoals   = totalGames > 0 ? (totalGoals / totalGames).toFixed(2) : "0.00";
+
+            const vs  = obj(profile?.VS);
+            const so  = obj(profile?.SO);
+            const otp = obj(profile?.OTP);
+
+            const mode = STATE.playersMode;
+            let history = [];
+            if (isModern && historyRaw) {
+                history = arr(historyRaw?.[mode.toLowerCase()]);
+            } else if (historyRaw) {
+                history = arr(historyRaw);
+            }
+
+            history = history.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            const modeTiles = isModern ? `
+                ${statTile("VS Games", num(vs.games), `${num(vs.goals)} goals`)}
+                ${statTile("SO Games", num(so.games), `${num(so.goals)} goals`)}
+                ${hasOTP ? statTile("OTP Games", num(otp.games), `${num(otp.goals)} goals`) : ""}
+            ` : "";
+
+            const matchCards = history.slice(0, 10).map(h => {
+                const ps  = num(h.scor ?? h.score);
+                const os  = num(h.opponent_score);
+                const won = ps > os;
+                const lost = ps < os;
+                const color = won ? "#4ade80" : lost ? "#f87171" : "#fff";
+                return `<div class="match-card">
+                    <div class="match-score-row">
+                        <div>
+                            <div class="match-player">${esc(str(profile.playerName))}</div>
+                            <div class="match-team">${esc(str(h.tnam ?? h.team_name))}</div>
+                        </div>
+                        <div class="match-score" style="color:${color};">${ps} - ${os}</div>
+                        <div style="text-align:right;">
+                            <div class="match-player match-player-r">${esc(str(h.opponent))}</div>
+                            <div class="match-team">${esc(str(h.opponent_team))}</div>
+                        </div>
+                    </div>
+                    <div class="match-date">${date(h.created_at)}</div>
+                </div>`;
+            }).join("");
+
+            $("profileOverview").innerHTML = `
+                <div style="display:flex;flex-direction:column;">
+                    <div class="profile-header">
+                        <div class="profile-av" style="width:46px;height:46px;font-size:16px;">${esc(String(str(profile.playerName)).slice(0,2).toUpperCase())}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div class="profile-name">${esc(str(profile.playerName))}</div>
+                            <div class="profile-meta">${totalGames} games - ${totalGoals} goals${userId != null ? ` - ID: ${esc(String(userId))}` : ""}</div>
+                        </div>
+                        <div style="display:flex;gap:5px;flex-shrink:0;">
+                            <button class="btn" onclick="navigator.clipboard.writeText(${JSON.stringify(str(profile.playerName))})">Copy Name</button>
+                            ${userId != null ? `<button class="btn" onclick="navigator.clipboard.writeText(${JSON.stringify(String(userId))})">Copy ID</button>` : ""}
+                        </div>
+                    </div>
+                    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
+                        <div>
+                            <div class="section-title">Stats</div>
+                            <div class="stat-grid">
+                                ${modeTiles}
+                                ${statTile("Games Played", totalGames)}
+                                ${statTile("Total Goals", totalGoals)}
+                                ${statTile("Goals / Game", avgGoals)}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="section-title">Recent Matches${isModern ? ` - ${mode}` : ""}</div>
+                            ${history.length
+                ? `<div class="match-list">${matchCards}</div>`
+                : emptyState("📭", "No match history found.", "Play some games to see history here.")
+            }
+                        </div>
+                    </div>
+                </div>`;
+
+            STATE.profileJson = JSON.stringify({ profile, history: historyRaw }, null, 2);
+            $("profileRaw").textContent = STATE.profileJson;
+
+        } catch (e) {
+            console.error("[Profile]", e);
+            $("profileOverview").innerHTML = errBox(`Could not load profile for "${name}". ${e.message}`);
+        }
+    };
+
+    const loadLeaderboards = async (force = false) => {
+        const ver   = STATE.lbVer;
+        const range = STATE.lbRange;
+        const url   = endpoint(ver, `/api/leaderboard/${range}`);
+        if (force) bust(url);
+
+        $("lbBody").innerHTML = `<div class="lb-grid">${[1,2,3].map(() => skelBlock(180)).join("")}</div>`;
+
+        try {
+            const raw  = await fetchJSON(url, TTL.lb);
+            const data = arr(raw);
+            const top5 = data.slice(0, 5);
+
+            const rankClass = i => ["r1","r2","r3","",""][i] ?? "";
+
+            const categories = [
+                { label: "Total Goals",  val: p => num(p?.totalGoals) },
+                { label: "Goals / Game", val: p => { const g = num(p?.gamesPlayed), gl = num(p?.totalGoals); return g > 0 ? (gl / g).toFixed(2) : "0.00"; } },
+                { label: "Games Played", val: p => num(p?.gamesPlayed) },
+            ];
+
+            $("lbBody").innerHTML = `<div class="lb-grid">` + categories.map(cat =>
+                `<div class="lb-card fade-in">
+                    <div class="lb-head">${cat.label}</div>
+                    ${top5.length
+                    ? top5.map((p, i) => {
+                        const tag = (p && typeof p === "object" && typeof p.gamertag === "string" && p.gamertag.trim()) ? p.gamertag : "-";
+                        return `<div class="lb-row">
+                                <span class="lb-rank ${rankClass(i)}">${i + 1}</span>
+                                <span class="lb-name">${esc(tag)}</span>
+                                <span class="lb-val">${cat.val(p)}</span>
+                            </div>`;
+                    }).join("")
+                    : `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px;">No data available</div>`
+                }
+                </div>`
+            ).join("") + `</div>`;
+
+        } catch (e) {
+            $("lbBody").innerHTML = errBox(`Failed to load leaderboards. ${e.message}`);
+        }
+    };
+
+    const selectTab = tab => {
+        STATE.tab = tab;
+
+        document.querySelectorAll(".nav-btn[data-tab]").forEach(b =>
+            b.classList.toggle("active", b.dataset.tab === tab)
+        );
+
+        document.querySelectorAll(".mob-nav-btn[data-tab]").forEach(b =>
+            b.classList.toggle("active", b.dataset.tab === tab)
+        );
+
+        document.querySelectorAll(".panel").forEach(p =>
+            p.classList.toggle("active", p.id === `panel-${tab}`)
+        );
+
+        if (tab === "status")       loadStatus();
+        if (tab === "games")        loadGames();
+        if (tab === "players")      loadPlayers();
+        if (tab === "leaderboards") loadLeaderboards();
+    };
+
+    const setupDd = (btnId, menuId, onSelect) => {
+        const btn  = $(btnId);
+        const menu = $(menuId);
+        if (!btn || !menu) return;
+
+        btn.addEventListener("click", e => {
+            e.stopPropagation();
+            const open = menu.classList.contains("open");
+            closeAllDd();
+            if (!open) { menu.classList.add("open"); btn.classList.add("open"); }
+        });
+
+        menu.querySelectorAll("[data-value],[data-mode]").forEach(item => {
+            item.addEventListener("click", () => {
+                menu.querySelectorAll(".dd-item").forEach(i => i.classList.remove("active"));
+                item.classList.add("active");
+                closeAllDd();
+                onSelect(item.dataset.value ?? item.dataset.mode, item.textContent.trim());
+            });
+        });
+    };
+
+    const closeAllDd = () => {
+        document.querySelectorAll(".dd-menu.open").forEach(m => m.classList.remove("open"));
+        document.querySelectorAll(".dd-btn.open").forEach(b => b.classList.remove("open"));
+    };
+
+    const updateModeVisibility = (ver, sectionId, btnId, labelId, menuId) => {
+        const modes   = CFG.modes[ver] || [];
+        const section = $(sectionId);
+        if (!section) return;
+
+        if (modes.length) {
+            section.style.display = "";
+            const menu = $(menuId);
+            if (menu) {
+                menu.querySelectorAll("[data-mode]").forEach(item => {
+                    item.hidden = !modes.includes(item.dataset.mode);
+                });
+                const first = modes[0];
+                const label = $(labelId);
+                if (label) label.textContent = first;
+                menu.querySelectorAll(".dd-item").forEach(i => i.classList.toggle("active", i.dataset.mode === first));
+            }
+        } else {
+            section.style.display = "none";
+        }
+    };
+
+    const openSidebar  = () => { $("sidebar").classList.add("mob-open"); $("overlay").classList.add("show"); };
+    const closeSidebar = () => { $("sidebar").classList.remove("mob-open"); $("overlay").classList.remove("show"); };
+
+    const init = () => {
+
+        document.addEventListener("click", closeAllDd);
+
+        $("mobMenuBtn")?.addEventListener("click", e => { e.stopPropagation(); openSidebar(); });
+        $("overlay")?.addEventListener("click", closeSidebar);
+
+        document.querySelectorAll(".nav-btn[data-tab]").forEach(b =>
+            b.addEventListener("click", () => { selectTab(b.dataset.tab); closeSidebar(); })
+        );
+
+        document.querySelectorAll(".mob-nav-btn[data-tab]").forEach(b =>
+            b.addEventListener("click", () => selectTab(b.dataset.tab))
+        );
+
+        $("statusRefresh")?.addEventListener("click", () => loadStatus(true));
+        $("gamesRefresh")?.addEventListener("click",  () => loadGames(true));
+        $("playersRefresh")?.addEventListener("click", () => { STATE.players = []; loadPlayers(true); });
+
+        $("playerSearch")?.addEventListener("input", renderPlayers);
+
+        $("playerList")?.addEventListener("click", e => {
+            const btn = e.target.closest("[data-name]");
+            if (btn) loadProfile(btn.dataset.name);
+        });
+
+        $("ptabOverview")?.addEventListener("click", () => {
+            $("profileOverview").style.display = "";
+            $("profileRaw").style.display      = "none";
+            $("ptabOverview").classList.add("active");
+            $("ptabRaw").classList.remove("active");
+        });
+
+        $("ptabRaw")?.addEventListener("click", () => {
+            $("profileOverview").style.display = "none";
+            $("profileRaw").style.display      = "";
+            $("ptabRaw").classList.add("active");
+            $("ptabOverview").classList.remove("active");
+        });
+
+        $("copyJsonBtn")?.addEventListener("click", () => {
+            const text = STATE.profileJson;
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = $("copyJsonBtn");
+                const orig = btn.textContent;
+                btn.textContent = "Copied!";
+                setTimeout(() => { btn.textContent = orig; }, 1500);
+            }).catch(() => {});
+        });
+
+        setupDd("gamesVersionBtn", "gamesVersionMenu", (val, label) => {
+            STATE.gamesVer  = val;
+            STATE.gamesMode = "VS";
+            $("gamesVersionLabel").textContent = label;
+            updateModeVisibility(val, "gamesModeSection", "gamesModeBtn", "gamesModeLabel", "gamesModeMenu");
+            STATE.cache.delete(endpoint(val, "/api/games"));
+            loadGames(true);
+        });
+
+        setupDd("gamesModeBtn", "gamesModeMenu", (mode) => {
+            STATE.gamesMode = mode;
+            $("gamesModeLabel").textContent = mode;
+            loadGames(true);
+        });
+
+        setupDd("playersVersionBtn", "playersVersionMenu", (val, label) => {
+            STATE.playersVer  = val;
+            STATE.playersMode = "VS";
+            STATE.players     = [];
+            STATE.profileName = null;
+            STATE.profileJson = null;
+            $("playersVersionLabel").textContent = label;
+            $("profileOverview").innerHTML = `<div class="empty-state" style="height:100%;"><span class="empty-icon">👆</span>Select a player from the list<span class="empty-hint">Their stats and recent matches will appear here</span></div>`;
+            $("profileRaw").textContent = "";
+            $("profileRaw").style.display = "none";
+            $("profileOverview").style.display = "";
+            $("ptabOverview").classList.add("active");
+            $("ptabRaw").classList.remove("active");
+            loadPlayers(true);
+        });
+
+        setupDd("lbVersionBtn", "lbVersionMenu", (val, label) => {
+            STATE.lbVer = val;
+            $("lbVersionLabel").textContent = label;
+            loadLeaderboards(true);
+        });
+
+        $("lbRangeGroup")?.querySelectorAll("[data-window]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                STATE.lbRange = btn.dataset.window;
+                $("lbRangeGroup").querySelectorAll(".btn-seg").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                loadLeaderboards(true);
+            });
+        });
+
+        selectTab("status");
+    };
+
+    return { init };
 })();
 
-//Init ZamboniWebsite
 App.init();
