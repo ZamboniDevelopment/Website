@@ -14,15 +14,16 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Routes for pages
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "landing-page.html"));
+    res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 app.get("/statistics", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "statistics-page.html"));
 });
 
+// LEGACY: REDIRECT TO MAIN PAGE
 app.get("/faq", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "faq-page.html"));
+    res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Proxy due to cors on development server. USE IF RUNNING LOCAL OR REMOTE FROM SERVBER

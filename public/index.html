@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Zamboni | Classic NHL Online Servers</title>
+    <meta name="description"
+          content="Play NHL 10, NHL 11, NHL 14 and NHL Legacy online again using community servers powered by Zamboni.">
+    <link rel="icon" href="zamboni-logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap"
+          rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --ice-blue: #4f7cff;
+            --ice-light: #8fb3ff;
+            --rink-dark: #05080f;
+            --rink-mid: #0a0f1e;
+            --glass: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-snap-type: y mandatory;
+        }
+
+        body {
+            background: var(--rink-dark);
+            color: #e5e7eb;
+            font-family: 'Barlow', system-ui;
+            overflow-x: hidden;
+            margin: 0;
+        }
+
+        .ice {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: radial-gradient(ellipse 120% 60% at 50% 100%, rgba(79, 124, 255, .07) 0%, transparent 70%),
+            radial-gradient(ellipse 80% 40% at 20% 20%, rgba(79, 124, 255, .04) 0%, transparent 60%),
+            linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+            var(--rink-dark);
+            background-size: 100%, 100%, 60px 60px, 60px 60px, 100%;
+        }
+
+        .ice::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: min(700px, 90vw);
+            height: min(700px, 90vw);
+            border-radius: 50%;
+            border: 1px solid rgba(79, 124, 255, .06);
+            pointer-events: none;
+        }
+
+        .ice::after {
+            content: "";
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(120deg, transparent, rgba(255, 255, 255, .03), transparent);
+            animation: shine 20s linear infinite;
+        }
+
+        @keyframes shine {
+            0% {
+                transform: translateX(-50%)
+            }
+            100% {
+                transform: translateX(50%)
+            }
+        }
+
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            background: rgba(5, 8, 15, .75);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, .06);
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            font-size: 22px;
+            letter-spacing: .02em;
+        }
+
+        .logo img {
+            height: 32px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-links a {
+            color: rgba(229, 231, 235, .6);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all .2s;
+            letter-spacing: .01em;
+        }
+
+        .nav-links a:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, .07);
+        }
+
+        section {
+            height: 100vh;
+            scroll-snap-align: start;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .gradient {
+            background: linear-gradient(90deg, var(--ice-blue), var(--ice-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cursor {
+            display: inline-block;
+            margin-left: 2px;
+            -webkit-text-fill-color: var(--ice-blue);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50%, 100% {
+                opacity: 1
+            }
+            25%, 75% {
+                opacity: 0
+            }
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 100%;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 14px;
+            padding: 16px 14px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            transition: border-color .25s, background .25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(79, 124, 255, .08), transparent 70%);
+            opacity: 0;
+            transition: opacity .3s;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(79, 124, 255, .3);
+            background: rgba(79, 124, 255, .06);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: rgba(229, 231, 235, .4);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .stat-icon {
+            font-size: 18px;
+            margin-bottom: 6px;
+            opacity: .7;
+        }
+
+        .btn-discord {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #5865F2;
+            color: #fff;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 14px 28px;
+            border-radius: 12px;
+            text-decoration: none;
+            box-shadow: 0 8px 32px rgba(88, 101, 242, .35);
+            transition: transform .2s, box-shadow .2s;
+        }
+
+        .btn-discord:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 40px rgba(88, 101, 242, .5);
+        }
+
+        .btn-outline {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, .12);
+            color: rgba(229, 231, 235, .8);
+            font-weight: 500;
+            font-size: 15px;
+            padding: 14px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: background .2s, border-color .2s, color .2s;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, .06);
+            border-color: rgba(255, 255, 255, .2);
+            color: #fff;
+        }
+
+        h1 {
+            font-family: 'Barlow Condensed', sans-serif !important;
+            font-weight: 800 !important;
+            font-size: clamp(40px, 5vw, 72px) !important;
+            line-height: 1.05 !important;
+            letter-spacing: -0.02em !important;
+            margin: 0 0 20px !important;
+        }
+
+        .game-card {
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 16px;
+            padding: 22px 18px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            transition: border-color .25s, transform .25s;
+        }
+
+        .game-card:hover {
+            border-color: rgba(79, 124, 255, .25);
+            transform: translateY(-4px);
+        }
+
+        .game-card h3 {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        #type {
+            font-size: 1.2em;
+            display: inline-block;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: clamp(32px, 8vw, 52px) !important;
+                line-height: 1.1 !important;
+            }
+        }
+
+        .game-card .server-stat {
+            font-size: 13px;
+            color: rgba(229, 231, 235, .55);
+            line-height: 1.8;
+        }
+
+        .online-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            background: #22c55e;
+            border-radius: 50%;
+            margin-right: 5px;
+            box-shadow: 0 0 6px rgba(34, 197, 94, .6);
+        }
+
+        .section2-inner {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 24px;
+            width: 100%;
+        }
+
+        h2 {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            letter-spacing: -.01em;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid rgba(255, 255, 255, .06);
+            padding: 16px 0;
+        }
+
+        .faq-item h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #e5e7eb;
+            margin-bottom: 5px;
+        }
+
+        .faq-item p {
+            font-size: 14px;
+            color: rgba(229, 231, 235, .5);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .arrow {
+            position: absolute;
+            bottom: 36px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2.5s ease-in-out infinite;
+            opacity: .4;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateX(-50%) translateY(0)
+            }
+            50% {
+                transform: translateX(-50%) translateY(8px)
+            }
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(79, 124, 255, .12);
+            border: 1px solid rgba(79, 124, 255, .25);
+            color: var(--ice-light);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            padding: 5px 12px;
+            border-radius: 100px;
+            margin-bottom: 18px;
+        }
+
+        @media (max-width: 768px) {
+            section {
+                padding-top: 70px;
+            }
+
+            .topbar {
+                padding: 0 16px;
+            }
+
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .hero-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            .stat-value {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="ice"></div>
+<div class="topbar">
+    <div class="logo">
+        <img src="zamboni-logo.png" alt="Zamboni">
+        <span>Zamboni</span>
+    </div>
+    <div class="nav-links">
+        <a href="https://discord.gg/FgPY7tAFEJ">Discord</a>
+        <a href="/statistics">Statistics</a>
+    </div>
+</div>
+<section>
+    <div class="max-w-6xl mx-auto px-6 w-full">
+        <div class="hero-grid" style="display:grid; grid-template-columns: 3fr 2fr; gap: 40px; align-items: center;">
+            <div>
+                <div class="badge">
+                    <span style="width:6px;height:6px;background:#22c55e;border-radius:50%;display:inline-block;box-shadow:0 0 6px #22c55e"></span>
+                    Servers Online
+                </div>
+                <h1>
+                    The best private<br>server for<br>
+                    <span style="display:block; min-height:1.15em; line-height:1.15;">
+                        <span id="type" class="gradient"></span><span class="cursor">|</span>
+                    </span>
+                </h1>
+                <p style="color:rgba(229,231,235,.5); font-size:17px; line-height:1.65; margin:0 0 28px; max-width:420px;">
+                    Play classic NHL games online again with rebuilt multiplayer servers.
+                </p>
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    <a href="https://discord.gg/FgPY7tAFEJ" class="btn-discord">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                        </svg>
+                        Join Discord
+                    </a>
+                    <a href="https://github.com/ZamboniDevelopment" class="btn-outline">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+                        </svg>
+                        GitHub
+                    </a>
+                    <a href="/statistics" class="btn-outline">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                        Statistics
+                    </a>
+                </div>
+            </div>
+            <div>
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon">💬</div>
+                        <div class="stat-label">Discord Members</div>
+                        <div class="stat-value" id="discordMembers">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🟢</div>
+                        <div class="stat-label">Online Now</div>
+                        <div class="stat-value" id="discordOnline">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-label">Github Repos</div>
+                        <div class="stat-value" id="githubRepos">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⭐</div>
+                        <div class="stat-label">Github Stars</div>
+                        <div class="stat-value" id="githubStars">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="arrow">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+             stroke-linecap="round">
+            <polyline points="6 9 12 15 18 9"/>
+        </svg>
+    </div>
+</section>
+<section>
+    <div class="section2-inner">
+        <h2 style="font-size:clamp(28px,4vw,40px); margin-bottom:24px; text-align:center;">
+            Live Game Servers
+        </h2>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:48px;">
+            <div class="game-card">
+                <h3>NHL 10</h3>
+                <div class="server-stat" id="nhl10">
+                    <span style="color:rgba(229,231,235,.3)">Loading…</span>
+                </div>
+            </div>
+            <div class="game-card">
+                <h3>NHL 11</h3>
+                <div class="server-stat" id="nhl11">
+                    <span style="color:rgba(229,231,235,.3)">Loading…</span>
+                </div>
+            </div>
+            <div class="game-card">
+                <h3>NHL 14</h3>
+                <div class="server-stat" id="nhl14">
+                    <span style="color:rgba(229,231,235,.3)">Loading…</span>
+                </div>
+            </div>
+            <div class="game-card">
+                <h3>NHL Legacy</h3>
+                <div class="server-stat" id="nhllegacy">
+                    <span style="color:rgba(229,231,235,.3)">Loading…</span>
+                </div>
+            </div>
+        </div>
+        <h2 style="font-size:clamp(22px,3vw,32px); margin-bottom:4px; text-align:center;">
+            Frequently Asked Questions
+        </h2>
+        <div style="margin-top:8px;">
+            <div class="faq-item">
+                <h3>What is Zamboni?</h3>
+                <p>Zamboni is a community-driven project restoring online multiplayer for classic NHL games on RPCS3 -
+                    including NHL 10, NHL 11, NHL 14 and NHL Legacy Edition.</p>
+            </div>
+            <div class="faq-item">
+                <h3>How do I play online on PC?</h3>
+                <p>Join our Discord and follow the setup guide. You'll need RPCS3 and a legally obtained copy of the
+                    game before connecting to the servers.</p>
+            </div>
+            <div class="faq-item">
+                <h3>Is this affiliated with EA?</h3>
+                <p>No. Zamboni is a fan-made project and is not affiliated with or endorsed by EA or EA Sports.</p>
+            </div>
+            <div class="faq-item">
+                <h3>Can I contribute?</h3>
+                <p>Yes. Zamboni is open source - developers can contribute via GitHub.</p>
+            </div>
+            <div class="faq-item" style="border-bottom:none;">
+                <h3>Where can I see statistics?</h3>
+                <p>The statistics page displays player rankings, match history and server activity.</p>
+            </div>
+        </div>
+        <footer style="text-align:center; color:rgba(229,231,235,.25); margin-top:36px; font-size:13px;">
+            © 2026 Zamboni.gg - Fan-made NHL revival project. Not affiliated with or endorsed by EA or EA Sports.
+        </footer>
+    </div>
+</section>
+
+<script>
+    //typewriter effect on the top text
+    const games = ["NHL 10", "NHL 11", "NHL 14", "NHL Legacy"];
+    let gi = 0, gj = 0, del = false;
+
+    function type() {
+        const word = games[gi];
+        document.getElementById("type").textContent = word.substring(0, gj);
+        if (!del) {
+            gj++;
+            if (gj > word.length + 1) {
+                del = true;
+                setTimeout(type, 1400);
+                return;
+            }
+        } else {
+            gj--;
+            if (gj === 0) {
+                del = false;
+                gi = (gi + 1) % games.length;
+            }
+        }
+        setTimeout(type, del ? 40 : 65);
+    }
+
+    type();
+
+    //discord stats
+    fetch("https://discord.com/api/v9/invites/uJGs8UFm?with_counts=true")
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById("discordMembers").textContent = d.approximate_member_count?.toLocaleString() ?? "-";
+            document.getElementById("discordOnline").textContent = d.approximate_presence_count?.toLocaleString() ?? "-";
+        })
+        .catch(() => {
+        });
+
+    //github stats
+    fetch("https://api.github.com/orgs/ZamboniDevelopment/repos")
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById("githubRepos").textContent = d.length ?? "-";
+            const stars = d.reduce((s, r) => s + r.stargazers_count, 0);
+            document.getElementById("githubStars").textContent = stars || "-";
+        })
+        .catch(() => {
+        });
+
+    //nhl server stats
+    async function load(v, id) {
+        try {
+            const r = await fetch(`https://zamboni.gg/${v}/status`);
+            const j = await r.json();
+            document.getElementById(id).innerHTML =
+                `<span class="online-dot"></span><strong style="color:#fff">${j.onlineUsersCount}</strong> players<br>` +
+                `<span>${j.activeGames} games · ${j.queuedUsers} queued</span>`;
+        } catch {
+            document.getElementById(id).innerHTML = `<span style="color:rgba(229,231,235,.3)">Offline</span>`;
+        }
+    }
+
+    load("nhl10", "nhl10");
+    load("nhl11", "nhl11");
+    load("nhl14", "nhl14");
+    load("nhllegacy", "nhllegacy");
+</script>
+</body>
+</html>
