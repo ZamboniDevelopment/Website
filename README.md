@@ -26,7 +26,7 @@ Statistics Includes:
 
 If you are intered in running the project locally, follow these steps:
 
-1. Edit ```STATE.basebath``` in ```statistics-script.js``` to just ```""```
+1. Edit ```CFG.basebath``` in ```statistics-script.js``` to just ```""```
 2. Run the project with ```npm run local``` to run the project in proxy mode, due to cors on zamboni.gg
 
 ---
@@ -38,3 +38,4 @@ Some things that probs would make this better
 - Better Code Documentation
 - Better Responsiveness
 - Overall improvements
+- lot of other shit tbh

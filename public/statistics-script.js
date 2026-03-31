@@ -1,18 +1,15 @@
 // ZamboniDevelopment - Website
-// statistics-script.js
 // copyright all contributors
 
 const App = (() => {
-
     const $ = id => document.getElementById(id);
-
     const CFG = {
-        base: "",
+        base: "https://zamboni.gg",
         servers: {
-            nhl10:     { label: "NHL 10",     url: b => `${b}/nhl10/status` },
-            nhl11:     { label: "NHL 11",     url: b => `${b}/nhl11/status` },
-            nhl14:     { label: "NHL 14",     url: b => `${b}:8082/nhl14/status` },
-            nhllegacy: { label: "NHL Legacy", url: b => `${b}:8083/nhllegacy/status` },
+            nhl10:     { label: "NHL 10",     url: () => `/temp/status/nhl10` },
+            nhl11:     { label: "NHL 11",     url: () => `/temp/status/nhl11` },
+            nhl14:     { label: "NHL 14",     url: () => `/temp/status/nhl14` },
+            nhllegacy: { label: "NHL Legacy", url: () => `/temp/status/nhllegacy` },
         },
         modes: {
             nhl10:     [],
@@ -21,11 +18,13 @@ const App = (() => {
             nhllegacy: ["VS", "SO"],
         },
     };
-
     const STATE = {
         tab:         "status",
         gamesVer:   "nhl10",
         gamesMode:  "VS",
+        gamesSort:  "date_desc",
+        gamesSearch:"",
+        gamesRaw:   [],
         playersVer: "nhl10",
         playersMode:"VS",
         lbVer:      "nhl10",
@@ -36,17 +35,16 @@ const App = (() => {
         cache:      new Map(),
     };
 
-    const TTL = { status: 10000, games: 5000, players: 60000, profile: 30000, history: 15000, lb: 60000 };
 
+
+    const TTL = { status: 10000, games: 5000, players: 60000, profile: 30000, history: 15000, lb: 60000 };
     const str  = v => (typeof v === "string" && v.trim()) ? v.trim() : "-";
     const num  = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
     const esc  = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
     const date = d => { try { return d ? new Date(d).toLocaleString() : "-"; } catch { return "-"; } };
     const arr  = v => Array.isArray(v) ? v.filter(x => x != null) : [];
     const obj  = v => (v && typeof v === "object" && !Array.isArray(v)) ? v : {};
-
     const endpoint = (ver, path) => `${CFG.base}/${ver}${path}`;
-
     const fetchJSON = async (url, ttl = 8000) => {
         const hit = STATE.cache.get(url);
         if (hit && Date.now() - hit.t < ttl) return hit.d;
@@ -56,23 +54,17 @@ const App = (() => {
         STATE.cache.set(url, { t: Date.now(), d });
         return d;
     };
-
     const bust = url => { STATE.cache.delete(url); };
-
     const skelBlock = (h, w = "100%") =>
         `<span class="skel" style="display:block;height:${h}px;width:${w};border-radius:6px;"></span>`;
-
     const errBox = msg =>
         `<div class="err-box"><span>⚠</span><span>${esc(msg)}</span></div>`;
-
     const emptyState = (icon, text, hint = "") =>
         `<div class="empty-state"><span class="empty-icon">${icon}</span>${esc(text)}${hint ? `<span class="empty-hint">${esc(hint)}</span>` : ""}</div>`;
-
     const av = (name, size = 28) => {
         const init = String(name ?? "?").replace(/[^a-zA-Z0-9]/g, "").slice(0, 2).toUpperCase() || "?";
         return `<div class="player-av" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px;">${esc(init)}</div>`;
     };
-
     const statTile = (label, value, sub = "") =>
         `<div class="stat-tile"><div class="stat-label">${label}</div><div class="stat-val">${esc(String(value))}</div>${sub ? `<div class="stat-sub">${esc(sub)}</div>` : ""}</div>`;
 
@@ -97,6 +89,12 @@ const App = (() => {
                 const el = $(`sc-${k}`);
                 try {
                     const d = await fetchJSON(url, TTL.status);
+                    const players = typeof d.onlineUsers === "string" && d.onlineUsers.trim()
+                        ? d.onlineUsers.split(",").map(p => p.trim()).filter(Boolean)
+                        : [];
+                    const playerChips = players.length
+                        ? players.map(p => `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:5px;font-size:10px;color:var(--text-2);white-space:nowrap;"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px rgba(34,197,94,.5);flex-shrink:0;display:inline-block;"></span>${esc(p)}</span>`).join("")
+                        : `<span style="font-size:10px;color:var(--text-3);">No players online</span>`;
                     el.innerHTML = `
                         <div class="server-card-head">
                             <span class="server-name">${s.label}</span>
@@ -119,6 +117,10 @@ const App = (() => {
                                 <div class="server-stat-label">Version</div>
                                 <div class="server-stat-val" style="font-size:13px;padding-top:2px;">${esc(str(d.serverVersion))}</div>
                             </div>
+                        </div>
+                        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+                            <div style="font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px;">Players Online</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">${playerChips}</div>
                         </div>`;
                 } catch (e) {
                     el.innerHTML = `
@@ -138,6 +140,86 @@ const App = (() => {
         return arr(data?.[mode.toLowerCase()]);
     };
 
+    // todo(dt): more sorting ways? or just new way to make advanced filters as the data that could be filtered from the db via api is so much
+    const sortGames = (games, sort) => {
+        const g = games.slice();
+        switch (sort) {
+            case "date_asc":     return g.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            case "goals_desc":   return g.sort((a, b) => num(b.totalGoals) - num(a.totalGoals));
+            case "goals_asc":    return g.sort((a, b) => num(a.totalGoals) - num(b.totalGoals));
+            case "score_desc":   return g.sort((a, b) => {
+                const ts = x => arr(x.teams).reduce((s, t) => s + num(t.score), 0);
+                return ts(b) - ts(a);
+            });
+            case "latency_asc":  return g.sort((a, b) => num(a.avgLatency) - num(b.avgLatency));
+            case "latency_desc": return g.sort((a, b) => num(b.avgLatency) - num(a.avgLatency));
+            case "fps_desc":     return g.sort((a, b) => num(b.avgFps) - num(a.avgFps));
+            case "id_asc":       return g.sort((a, b) => num(a.game_id) - num(b.game_id));
+            case "id_desc":      return g.sort((a, b) => num(b.game_id) - num(a.game_id));
+            default:             return g.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+    };
+
+    const filterGames = (games, query) => {
+        if (!query) return games;
+        const q = query.toLowerCase();
+        return games.filter(g => {
+            if (String(g.game_id ?? "").includes(q)) return true;
+            return arr(g.teams).some(t =>
+                String(t.gamertag ?? "").toLowerCase().includes(q) ||
+                String(t.team_name ?? "").toLowerCase().includes(q)
+            );
+        });
+    };
+
+    const renderGames = () => {
+        const sorted   = sortGames(STATE.gamesRaw, STATE.gamesSort);
+        const filtered = filterGames(sorted, STATE.gamesSearch);
+
+        if (!filtered.length) {
+            $("gamesList").innerHTML = emptyState("🔍", "No games match.", STATE.gamesSearch ? 'No results for "' + STATE.gamesSearch + '"' : "No recent games found.");
+            return;
+        }
+
+        $("gamesList").innerHTML = '<div class="game-list">' + filtered.slice(0, 50).map(g => {
+            const teams     = arr(g?.teams);
+            const home      = obj(teams[0]);
+            const away      = obj(teams[1]);
+            const homeScore = num(home.score);
+            const awayScore = num(away.score);
+            const hasAway   = typeof away.gamertag === "string" && away.gamertag.trim();
+
+            const shotsChip = home.shots != null
+                ? '<div class="game-chip"><span>Shots</span><b>' + num(home.shots) + (hasAway ? " / " + num(away.shots) : "") + '</b></div>'
+                : "";
+            const hitsChip = home.hits != null
+                ? '<div class="game-chip"><span>Hits</span><b>' + num(home.hits) + (hasAway ? " / " + num(away.hits) : "") + '</b></div>'
+                : "";
+            const awayBlock = hasAway
+                ? '<div class="game-team">' + esc(str(away.gamertag)) + '</div><div class="game-team-sub">' + esc(str(away.team_name)) + '</div>'
+                : '<div style="font-size:11px;color:var(--text-3);">Solo</div>';
+
+            return '<div class="game-card fade-in">'
+                + '<div class="game-top">'
+                + '<span class="game-id">Game #' + esc(String(g.game_id ?? "?")) + '</span>'
+                + '<div style="display:flex;align-items:center;gap:6px;">'
+                + '<span style="font-size:10px;color:var(--text-3);">' + date(g.created_at) + '</span>'
+                + '<span class="badge badge-b">' + esc(str(g.status)) + '</span>'
+                + '</div></div>'
+                + '<div class="game-score-row">'
+                + '<div><div class="game-team">' + esc(str(home.gamertag)) + '</div><div class="game-team-sub">' + esc(str(home.team_name)) + '</div></div>'
+                + '<div class="game-score">' + homeScore + (hasAway ? " - " + awayScore : "") + '</div>'
+                + '<div class="game-team-r">' + awayBlock + '</div>'
+                + '</div>'
+                + '<div class="game-meta">'
+                + '<div class="game-chip"><span>Goals</span><b>' + num(g.totalGoals) + '</b></div>'
+                + '<div class="game-chip"><span>Avg FPS</span><b>' + (g.avgFps != null ? Math.round(num(g.avgFps)) : "-") + '</b></div>'
+                + '<div class="game-chip"><span>Latency</span><b>' + (g.avgLatency != null ? Math.round(num(g.avgLatency)) + " ms" : "-") + '</b></div>'
+                + shotsChip + hitsChip
+                + '</div></div>';
+        }).join("") + '</div>';
+    };
+
     const loadGames = async (force = false) => {
         const ver  = STATE.gamesVer;
         const mode = STATE.gamesMode;
@@ -148,52 +230,17 @@ const App = (() => {
 
         try {
             const data  = await fetchJSON(url, TTL.games);
-            const games = extractGames(data, ver, mode);
+            STATE.gamesRaw = extractGames(data, ver, mode);
 
-            if (!games.length) {
+            if (!STATE.gamesRaw.length) {
                 $("gamesList").innerHTML = emptyState("🏒", "No recent games found.", "Check back later or try a different mode.");
                 return;
             }
 
-            $("gamesList").innerHTML = `<div class="game-list">` + games.slice(0, 30).map(g => {
-                const teams     = arr(g?.teams);
-                const home      = obj(teams[0]);
-                const away      = obj(teams[1]);
-                const homeScore = num(home.score);
-                const awayScore = num(away.score);
-                const hasAway   = typeof away.gamertag === "string" && away.gamertag.trim();
-
-                return `<div class="game-card fade-in">
-                    <div class="game-top">
-                        <span class="game-id">Game #${esc(String(g.game_id ?? "?"))}</span>
-                        <div style="display:flex;align-items:center;gap:6px;">
-                            <span style="font-size:10px;color:var(--text-3);">${date(g.created_at)}</span>
-                            <span class="badge badge-b">${esc(str(g.status))}</span>
-                        </div>
-                    </div>
-                    <div class="game-score-row">
-                        <div>
-                            <div class="game-team">${esc(str(home.gamertag))}</div>
-                            <div class="game-team-sub">${esc(str(home.team_name))}</div>
-                        </div>
-                        <div class="game-score">${homeScore}${hasAway ? ` - ${awayScore}` : ""}</div>
-                        <div class="game-team-r">
-                            ${hasAway
-                    ? `<div class="game-team">${esc(str(away.gamertag))}</div><div class="game-team-sub">${esc(str(away.team_name))}</div>`
-                    : `<div style="font-size:11px;color:var(--text-3);">Solo</div>`
-                }
-                        </div>
-                    </div>
-                    <div class="game-meta">
-                        <div class="game-chip"><span>Goals</span><b>${num(g.totalGoals)}</b></div>
-                        <div class="game-chip"><span>Avg FPS</span><b>${g.avgFps != null ? Math.round(num(g.avgFps)) : "-"}</b></div>
-                        <div class="game-chip"><span>Latency</span><b>${g.avgLatency != null ? Math.round(num(g.avgLatency)) + " ms" : "-"}</b></div>
-                    </div>
-                </div>`;
-            }).join("") + `</div>`;
+            renderGames();
 
         } catch (e) {
-            $("gamesList").innerHTML = errBox(`Failed to load games. ${e.message}`);
+            $("gamesList").innerHTML = errBox("Failed to load games. " + e.message);
         }
     };
 
@@ -279,6 +326,7 @@ const App = (() => {
                 historyRaw = await fetchJSON(histUrl, TTL.history).catch(() => null);
             }
 
+            // todo: maybe some other stats later too??
             const modes      = CFG.modes[ver] || [];
             const isModern   = modes.length > 0;
             const hasOTP     = modes.includes("OTP");
@@ -290,21 +338,66 @@ const App = (() => {
             const so  = obj(profile?.SO);
             const otp = obj(profile?.OTP);
 
+            const computeModeStats = (modeHistory) => {
+                const h = arr(modeHistory);
+                let wins = 0, losses = 0, draws = 0;
+                let totalShots = 0, totalHits = 0, totalLatency = 0, latencyCount = 0;
+                h.forEach(r => {
+                    const ps = num(r.scor ?? r.score);
+                    const os = num(r.opponent_score);
+                    if (ps > os) wins++;
+                    else if (ps < os) losses++;
+                    else draws++;
+                    totalShots += num(r.shts ?? r.shots);
+                    totalHits  += num(r.hits);
+                    const lat = num(r.lateavgnet ?? r.latency);
+                    if (lat > 0) { totalLatency += lat; latencyCount++; }
+                });
+                const avgLatency = latencyCount > 0 ? Math.round(totalLatency / latencyCount) : null;
+                return { wins, losses, draws, totalShots, totalHits, avgLatency, games: h.length };
+            };
+
+            const vsHistory  = arr(historyRaw?.vs ?? historyRaw?.VS);
+            const soHistory  = arr(historyRaw?.so ?? historyRaw?.SO);
+            const otpHistory = arr(historyRaw?.otp ?? historyRaw?.OTP);
+
+            const vsStats  = computeModeStats(vsHistory);
+            const soStats  = computeModeStats(soHistory);
+            const otpStats = computeModeStats(otpHistory);
+
+            const modeBlock = (label, modeData, stats) => {
+                if (!modeData || (!num(modeData.games) && !stats.games)) return "";
+                const games = num(modeData.games) || stats.games;
+                const goals = num(modeData.goals);
+                const wlPct = stats.games > 0 ? Math.round((stats.wins / stats.games) * 100) : 0;
+                return `
+                    <div style="background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;">${label}</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;">
+                            ${statTile("Games", games)}
+                            ${statTile("Goals", goals)}
+                            ${stats.games > 0 ? statTile("W / L / D", `${stats.wins}/${stats.losses}/${stats.draws}`, `${wlPct}% win`) : ""}
+                            ${stats.totalShots > 0 ? statTile("Shots", stats.totalShots) : ""}
+                            ${stats.totalHits > 0 ? statTile("Hits", stats.totalHits) : ""}
+                            ${stats.avgLatency != null ? statTile("Avg Ping", stats.avgLatency + " ms") : ""}
+                        </div>
+                    </div>`;
+            };
+
+            const modeTiles = isModern ? `
+                ${modeBlock("VS", vs, vsStats)}
+                ${modeBlock("SO", so, soStats)}
+                ${hasOTP ? modeBlock("OTP", otp, otpStats) : ""}
+            ` : "";
+
             const mode = STATE.playersMode;
             let history = [];
             if (isModern && historyRaw) {
-                history = arr(historyRaw?.[mode.toLowerCase()]);
+                history = arr(historyRaw?.[mode.toLowerCase()] ?? historyRaw?.[mode]);
             } else if (historyRaw) {
                 history = arr(historyRaw);
             }
-
             history = history.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-            const modeTiles = isModern ? `
-                ${statTile("VS Games", num(vs.games), `${num(vs.goals)} goals`)}
-                ${statTile("SO Games", num(so.games), `${num(so.goals)} goals`)}
-                ${hasOTP ? statTile("OTP Games", num(otp.games), `${num(otp.goals)} goals`) : ""}
-            ` : "";
 
             const matchCards = history.slice(0, 10).map(h => {
                 const ps  = num(h.scor ?? h.score);
@@ -344,8 +437,8 @@ const App = (() => {
                     <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
                         <div>
                             <div class="section-title">Stats</div>
-                            <div class="stat-grid">
-                                ${modeTiles}
+                            ${isModern ? `<div style="display:flex;flex-direction:column;gap:8px;">${modeTiles}</div>` : ""}
+                            <div class="stat-grid" style="${isModern ? "margin-top:10px;" : ""}">
                                 ${statTile("Games Played", totalGames)}
                                 ${statTile("Total Goals", totalGoals)}
                                 ${statTile("Goals / Game", avgGoals)}
@@ -370,6 +463,8 @@ const App = (() => {
         }
     };
 
+    // todo: full rework coming at some point in the backend
+    // todo: more real anfd acurate method to calculate these
     const loadLeaderboards = async (force = false) => {
         const ver   = STATE.lbVer;
         const range = STATE.lbRange;
@@ -415,15 +510,12 @@ const App = (() => {
 
     const selectTab = tab => {
         STATE.tab = tab;
-
         document.querySelectorAll(".nav-btn[data-tab]").forEach(b =>
             b.classList.toggle("active", b.dataset.tab === tab)
         );
-
         document.querySelectorAll(".mob-nav-btn[data-tab]").forEach(b =>
             b.classList.toggle("active", b.dataset.tab === tab)
         );
-
         document.querySelectorAll(".panel").forEach(p =>
             p.classList.toggle("active", p.id === `panel-${tab}`)
         );
@@ -446,12 +538,12 @@ const App = (() => {
             if (!open) { menu.classList.add("open"); btn.classList.add("open"); }
         });
 
-        menu.querySelectorAll("[data-value],[data-mode]").forEach(item => {
+        menu.querySelectorAll("[data-value],[data-mode],[data-sort]").forEach(item => {
             item.addEventListener("click", () => {
                 menu.querySelectorAll(".dd-item").forEach(i => i.classList.remove("active"));
                 item.classList.add("active");
                 closeAllDd();
-                onSelect(item.dataset.value ?? item.dataset.mode, item.textContent.trim());
+                onSelect(item.dataset.value ?? item.dataset.mode ?? item.dataset.sort, item.textContent.trim());
             });
         });
     };
@@ -550,6 +642,17 @@ const App = (() => {
             STATE.gamesMode = mode;
             $("gamesModeLabel").textContent = mode;
             loadGames(true);
+        });
+
+        setupDd("gamesSortBtn", "gamesSortMenu", (sort, label) => {
+            STATE.gamesSort = sort;
+            $("gamesSortLabel").textContent = label;
+            renderGames();
+        });
+
+        $("gamesSearch")?.addEventListener("input", e => {
+            STATE.gamesSearch = e.target.value.trim();
+            renderGames();
         });
 
         setupDd("playersVersionBtn", "playersVersionMenu", (val, label) => {

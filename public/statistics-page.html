@@ -584,6 +584,22 @@
                             <div class="dd-item" data-mode="OTP">OTP</div>
                         </div>
                     </div>
+                    <div class="dd">
+                        <button class="dd-btn" id="gamesSortBtn"><span id="gamesSortLabel">Newest</span><span class="dd-chevron">▼</span></button>
+                        <div class="dd-menu" id="gamesSortMenu">
+                            <div class="dd-item active" data-sort="date_desc">Newest</div>
+                            <div class="dd-item" data-sort="date_asc">Oldest</div>
+                            <div class="dd-item" data-sort="goals_desc">Most Goals</div>
+                            <div class="dd-item" data-sort="goals_asc">Fewest Goals</div>
+                            <div class="dd-item" data-sort="score_desc">Highest Score</div>
+                            <div class="dd-item" data-sort="latency_asc">Best Latency</div>
+                            <div class="dd-item" data-sort="latency_desc">Worst Latency</div>
+                            <div class="dd-item" data-sort="fps_desc">Best FPS</div>
+                            <div class="dd-item" data-sort="id_desc">Game ID ↓</div>
+                            <div class="dd-item" data-sort="id_asc">Game ID ↑</div>
+                        </div>
+                    </div>
+                    <input class="search" id="gamesSearch" type="text" placeholder="Search player, team, ID..." style="width:180px;">
                     <button class="btn" id="gamesRefresh">↻ Refresh</button>
                 </div>
             </div>

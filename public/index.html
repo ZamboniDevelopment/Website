@@ -474,7 +474,7 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">🟢</div>
-                        <div class="stat-label">Online Now</div>
+                        <div class="stat-label">Discord Online</div>
                         <div class="stat-value" id="discordOnline">-</div>
                     </div>
                     <div class="stat-card">
@@ -563,7 +563,6 @@
 </section>
 
 <script>
-    //typewriter effect on the top text
     const games = ["NHL 10", "NHL 11", "NHL 14", "NHL Legacy"];
     let gi = 0, gj = 0, del = false;
 
@@ -590,7 +589,7 @@
     type();
 
     //discord stats
-    fetch("https://discord.com/api/v9/invites/uJGs8UFm?with_counts=true")
+    fetch("https://discord.com/api/v9/invites/FgPY7tAFEJ?with_counts=true")
         .then(r => r.json())
         .then(d => {
             document.getElementById("discordMembers").textContent = d.approximate_member_count?.toLocaleString() ?? "-";
@@ -613,7 +612,9 @@
     //nhl server stats
     async function load(v, id) {
         try {
-            const r = await fetch(`https://zamboni.gg/${v}/status`);
+            //const r = await fetch(`/temp/status/${v}`); /* LOCAL */
+            const r = await fetch(`https://zamboni.gg/temp/status/${v}`); /* TEMP WAY TO MAKE IT WORK */
+            //const r = await fetch(`https://zamboni.gg/${v}/status`); /* NOT WORKING CURRENTLY */
             const j = await r.json();
             document.getElementById(id).innerHTML =
                 `<span class="online-dot"></span><strong style="color:#fff">${j.onlineUsersCount}</strong> players<br>` +
