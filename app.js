@@ -28,8 +28,11 @@ app.get("/faq", (req, res) => {
 const TEMP_STATUS_TARGETS = {
     nhl10:     "https://zamboni.gg/nhl10/status",
     nhl11:     "http://zamboni.gg:8081/nhl11/status",
+    nhl12:     "http://zamboni.gg:8085/nhl12/status",
+    nhl13:     "http://zamboni.gg:8086/nhl13/status",
     nhl14:     "http://zamboni.gg:8082/nhl14/status",
-    nhllegacy: "http://zamboni.gg:8083/nhllegacy/status",
+    nhl15:     "http://zamboni.gg:8087/nhl15/status",
+    nhllegacy: "http://zamboni.gg:8083/nhllegacy/status"
 };
 
 app.get("/temp/status/:version", async (req, res) => {
@@ -71,7 +74,10 @@ if (isLocal) {
     const proxyPaths = [
         /^\/nhl10\/.*/,
         /^\/nhl11\/.*/,
+        /^\/nhl12\/.*/,
+        /^\/nhl13\/.*/,
         /^\/nhl14\/.*/,
+        /^\/nhl15\/.*/,
         /^\/nhllegacy\/.*/,
         /^\/api\/.*/,
         /^\/status\/.*/

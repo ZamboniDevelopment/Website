@@ -8,13 +8,19 @@ const App = (() => {
         servers: {
             nhl10:     { label: "NHL 10",     url: () => `/temp/status/nhl10` },
             nhl11:     { label: "NHL 11",     url: () => `/temp/status/nhl11` },
+            nhl12:     { label: "NHL 12",     url: () => `/temp/status/nhl12` },
+            nhl13:     { label: "NHL 13",     url: () => `/temp/status/nhl13` },
             nhl14:     { label: "NHL 14",     url: () => `/temp/status/nhl14` },
+            nhl15:     { label: "NHL 15",     url: () => `/temp/status/nhl15` },
             nhllegacy: { label: "NHL Legacy", url: () => `/temp/status/nhllegacy` },
         },
         modes: {
             nhl10:     [],
             nhl11:     ["VS", "SO", "OTP"],
+            nhl12:     ["VS", "SO"],
+            nhl13:     ["VS", "SO"],
             nhl14:     ["VS", "SO"],
+            nhl15:     ["VS", "SO"],
             nhllegacy: ["VS", "SO"],
         },
     };

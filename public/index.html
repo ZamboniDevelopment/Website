@@ -3,9 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Zamboni | Classic NHL Online Servers</title>
-    <meta name="description"
-          content="Play NHL 10, NHL 11, NHL 14 and NHL Legacy online again using community servers powered by Zamboni.">
+    <title>Zamboni | Play NHL 10, 11, 12, 13, 14, 15 and Legacy Online</title>
+    <meta name="description" content="Zamboni brings back online multiplayer for classic NHL games. Play NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition online on RPCS3 using community-run private servers.">
+    <meta name="keywords" content="NHL 10 online, NHL 11 online, NHL 12 online, NHL 13 online, NHL 14 online, NHL 15 online, NHL Legacy online, RPCS3 NHL, NHL private server, classic NHL multiplayer, Zamboni NHL">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Zamboni | Classic NHL Online Servers">
+    <meta property="og:description" content="Play NHL 10, 11, 12, 13, 14, 15 and Legacy online again with community-run private servers on RPCS3.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://zamboni.gg/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Zamboni | Classic NHL Online Servers">
+    <meta name="twitter:description" content="Play NHL 10, 11, 12, 13, 14, 15 and Legacy online again with community-run private servers.">
+    <link rel="canonical" href="https://zamboni.gg/">
     <link rel="icon" href="zamboni-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap"
@@ -28,6 +37,12 @@
         html {
             scroll-behavior: smooth;
             scroll-snap-type: y mandatory;
+        }
+
+        @media (max-width: 768px) {
+            html {
+                scroll-snap-type: none;
+            }
         }
 
         body {
@@ -326,7 +341,7 @@
         }
 
         .section2-inner {
-            max-width: 860px;
+            max-width: 960px;
             margin: 0 auto;
             padding: 0 24px;
             width: 100%;
@@ -394,6 +409,9 @@
         @media (max-width: 768px) {
             section {
                 padding-top: 70px;
+                height: auto;
+                min-height: 100vh;
+                scroll-snap-align: start;
             }
 
             .topbar {
@@ -411,8 +429,42 @@
             .stat-value {
                 font-size: 24px;
             }
+
+            .section2-inner {
+                padding: 0 16px 24px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .server-cards-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+            .server-cards-grid .game-card[style*="span 2"] {
+                grid-column: span 2;
+            }
+        }
+        @media (max-width: 768px) and (min-width: 481px) {
+            .server-cards-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
+            .server-cards-grid .game-card[style*="span 2"] {
+                grid-column: span 1 !important;
+            }
         }
     </style>
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Zamboni",
+            "url": "https://zamboni.gg",
+            "description": "Community-run private servers for classic NHL games including NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition on RPCS3.",
+            "potentialAction": {
+                "@type": "JoinAction",
+                "target": "https://discord.gg/FgPY7tAFEJ"
+            }
+        }
+    </script>
 </head>
 <body>
 <div class="ice"></div>
@@ -504,29 +556,47 @@
         <h2 style="font-size:clamp(28px,4vw,40px); margin-bottom:24px; text-align:center;">
             Live Game Servers
         </h2>
-        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:48px;">
+        <div class="server-cards-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:48px;">
             <div class="game-card">
                 <h3>NHL 10</h3>
                 <div class="server-stat" id="nhl10">
-                    <span style="color:rgba(229,231,235,.3)">Loading…</span>
+                    <span style="color:rgba(229,231,235,.3)">Loading...</span>
                 </div>
             </div>
             <div class="game-card">
                 <h3>NHL 11</h3>
                 <div class="server-stat" id="nhl11">
-                    <span style="color:rgba(229,231,235,.3)">Loading…</span>
+                    <span style="color:rgba(229,231,235,.3)">Loading...</span>
+                </div>
+            </div>
+            <div class="game-card">
+                <h3>NHL 12</h3>
+                <div class="server-stat" id="nhl12">
+                    <span style="color:rgba(229,231,235,.3)">Loading...</span>
+                </div>
+            </div>
+            <div class="game-card">
+                <h3>NHL 13</h3>
+                <div class="server-stat" id="nhl13">
+                    <span style="color:rgba(229,231,235,.3)">Loading...</span>
                 </div>
             </div>
             <div class="game-card">
                 <h3>NHL 14</h3>
                 <div class="server-stat" id="nhl14">
-                    <span style="color:rgba(229,231,235,.3)">Loading…</span>
+                    <span style="color:rgba(229,231,235,.3)">Loading...</span>
                 </div>
             </div>
             <div class="game-card">
+                <h3>NHL 15</h3>
+                <div class="server-stat" id="nhl15">
+                    <span style="color:rgba(229,231,235,.3)">Loading...</span>
+                </div>
+            </div>
+            <div class="game-card" style="grid-column: span 2;">
                 <h3>NHL Legacy</h3>
                 <div class="server-stat" id="nhllegacy">
-                    <span style="color:rgba(229,231,235,.3)">Loading…</span>
+                    <span style="color:rgba(229,231,235,.3)">Loading...</span>
                 </div>
             </div>
         </div>
@@ -536,13 +606,11 @@
         <div style="margin-top:8px;">
             <div class="faq-item">
                 <h3>What is Zamboni?</h3>
-                <p>Zamboni is a community-driven project restoring online multiplayer for classic NHL games on RPCS3 -
-                    including NHL 10, NHL 11, NHL 14 and NHL Legacy Edition.</p>
+                <p>Zamboni is a community-driven project restoring online multiplayer for classic NHL games on RPCS3 - including NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition.</p>
             </div>
             <div class="faq-item">
                 <h3>How do I play online on PC?</h3>
-                <p>Join our Discord and follow the setup guide. You'll need RPCS3 and a legally obtained copy of the
-                    game before connecting to the servers.</p>
+                <p>Join our Discord and follow the setup guide. You will need RPCS3 and a legally obtained copy of the game before connecting to the servers.</p>
             </div>
             <div class="faq-item">
                 <h3>Is this affiliated with EA?</h3>
@@ -558,13 +626,13 @@
             </div>
         </div>
         <footer style="text-align:center; color:rgba(229,231,235,.25); margin-top:36px; font-size:13px;">
-            © 2026 Zamboni.gg - Fan-made NHL revival project. Not affiliated with or endorsed by EA or EA Sports.
+            &copy; 2026 Zamboni.gg - Fan-made NHL revival project. Not affiliated with or endorsed by EA or EA Sports.
         </footer>
     </div>
 </section>
 
 <script>
-    const games = ["NHL 10", "NHL 11", "NHL 14", "NHL Legacy"];
+    const games = ["NHL 10", "NHL 11", "NHL 12", "NHL 13", "NHL 14", "NHL 15", "NHL Legacy"];
     let gi = 0, gj = 0, del = false;
 
     function type() {
@@ -619,7 +687,7 @@
             const j = await r.json();
             document.getElementById(id).innerHTML =
                 `<span class="online-dot"></span><strong style="color:#fff">${j.onlineUsersCount}</strong> players<br>` +
-                `<span>${j.activeGames} games · ${j.queuedUsers} queued</span>`;
+                `<span>${j.activeGames} games &middot; ${j.queuedUsers} queued</span>`;
         } catch {
             document.getElementById(id).innerHTML = `<span style="color:rgba(229,231,235,.3)">Offline</span>`;
         }
@@ -627,7 +695,10 @@
 
     load("nhl10", "nhl10");
     load("nhl11", "nhl11");
+    load("nhl12", "nhl12");
+    load("nhl13", "nhl13");
     load("nhl14", "nhl14");
+    load("nhl15", "nhl15");
     load("nhllegacy", "nhllegacy");
 </script>
 </body>
