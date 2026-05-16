@@ -348,6 +348,7 @@ const App = (() => {
                 const h = arr(modeHistory);
                 let wins = 0, losses = 0, draws = 0;
                 let totalShots = 0, totalHits = 0, totalLatency = 0, latencyCount = 0;
+                let ppGoals = 0, ppOpps = 0;
                 h.forEach(r => {
                     const ps = num(r.scor ?? r.score);
                     const os = num(r.opponent_score);
@@ -358,9 +359,12 @@ const App = (() => {
                     totalHits  += num(r.hits);
                     const lat = num(r.lateavgnet ?? r.latency);
                     if (lat > 0) { totalLatency += lat; latencyCount++; }
+                    ppGoals += num(r.ppg);
+                    ppOpps  += num(r.ppo);
                 });
                 const avgLatency = latencyCount > 0 ? Math.round(totalLatency / latencyCount) : null;
-                return { wins, losses, draws, totalShots, totalHits, avgLatency, games: h.length };
+                const ppPct = ppOpps > 0 ? ((ppGoals / ppOpps) * 100).toFixed(1) : null;
+                return { wins, losses, draws, totalShots, totalHits, avgLatency, games: h.length, ppPct };
             };
 
             const vsHistory  = arr(historyRaw?.vs ?? historyRaw?.VS);
@@ -448,6 +452,7 @@ const App = (() => {
                                 ${statTile("Games Played", totalGames)}
                                 ${statTile("Total Goals", totalGoals)}
                                 ${statTile("Goals / Game", avgGoals)}
+                                ${statTile("PP%", vsStats.ppPct != null ? vsStats.ppPct + "%" : "—")}
                             </div>
                         </div>
                         <div>
