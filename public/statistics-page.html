@@ -8,6 +8,7 @@
     <meta name="description" content="Zamboni Statistics - live server status, games, and player statistics for NHL 10, 11, 12, 13, 14, 15 and Legacy."/>
     <meta name="theme-color" content="#05080f"/>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://cloudflare.com">
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -511,7 +512,6 @@
             .server-grid { grid-template-columns: repeat(2, 1fr); }
             .lb-grid { grid-template-columns: 1fr; }
         }
-
         @media (max-width: 480px) { .server-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -542,6 +542,10 @@
             <button class="nav-btn" data-tab="games"><span class="nav-icon">🏒</span> Games</button>
             <button class="nav-btn" data-tab="players"><span class="nav-icon">👤</span> Players</button>
             <button class="nav-btn" data-tab="leaderboards"><span class="nav-icon">🏆</span> Leaderboards</button>
+            <!-- SoonTM
+            <button class="nav-btn" data-tab="hut-stats"><span class="nav-icon">🗂️</span> HUT Stats</button>
+            -->
+            <a href="https://hut-12-db.vercel.app/" target="_blank" rel="noopener noreferrer" class="nav-btn"><span class="nav-icon">🃏</span> HUT Player DB↗</a>
         </div>
         <div style="margin-top:auto;"></div>
         <a href="https://discord.gg/FgPY7tAFEJ" target="_blank" rel="noopener" class="sidebar-discord">
