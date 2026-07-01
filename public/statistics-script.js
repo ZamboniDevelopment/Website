@@ -389,7 +389,6 @@ const App = (() => {
                             ${stats.games > 0 ? statTile("W / L / D", `${stats.wins}/${stats.losses}/${stats.draws}`, `${wlPct}% win`) : ""}
                             ${stats.totalShots > 0 ? statTile("Shots", stats.totalShots) : ""}
                             ${stats.totalHits > 0 ? statTile("Hits", stats.totalHits) : ""}
-                            ${stats.avgLatency != null ? statTile("Avg Ping", stats.avgLatency + " ms") : ""}
                         </div>
                     </div>`;
             };
