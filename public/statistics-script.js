@@ -582,7 +582,7 @@ const App = (() => {
         const el = $("hutViewOverview");
         const statusUrl     = hutEndpoint("/api/hut/status");
         const economyUrl    = hutEndpoint("/api/hut/stats/economy");
-        const formationsUrl = hutEndpoint("/api/hut/stats/squads/formations");
+        const chemistryUrl = hutEndpoint("/api/hut/stats/squads/top?sort=chemistry&limit=5");
         if (force) { bust(statusUrl); bust(economyUrl); bust(formationsUrl); bust(hutManagerStatsUrl); }
 
         el.innerHTML = `
@@ -593,11 +593,11 @@ const App = (() => {
             </div>`;
 
         try {
-            const [status, economy, mgrStats, formations] = await Promise.all([
+            const [status, economy, mgrStats, chemistry] = await Promise.all([
                 fetchJSON(statusUrl, TTL.hut),
                 fetchJSON(economyUrl, TTL.hut).catch(() => null),
                 fetchJSON(hutManagerStatsUrl, TTL.hutBoards).catch(() => []),
-                fetchJSON(formationsUrl, TTL.hutBoards).catch(() => []),
+                fetchJSON(chemistryUrl, TTL.hutBoards).catch(() => []),
             ]);
 
             const s = obj(status);
@@ -633,8 +633,8 @@ const App = (() => {
                 .map(m => ({ name: str(m.teamName), sub: hutGamertag(m.userId) || hutStr(m.teamAbbreviation), val: hutNum(m.pucks) }));
             const topWins = mgrs.slice().sort((a, b) => num(b.wins) - num(a.wins)).filter(m => num(m.gamesPlayed) > 0).slice(0, 5)
                 .map(m => ({ name: str(m.teamName), sub: `${num(m.wins)}-${num(m.losses)}-${num(m.otl)}`, val: hutNum(m.wins) }));
-            const topFormations = arr(formations).map(obj).slice(0, 5)
-                .map(f => ({ name: `Formation ${num(f.formation_id)}`, sub: `★ ${num(f.avg_star_rating)} avg - ${num(f.avg_chemistry)} chem`, val: `${hutNum(f.squads)} squads` }));
+            const topChemistry = arr(chemistry).map(obj).slice(0, 5)
+                .map(s => ({ name: str(s.squad_name), sub: `${hutStr(s.team_name)} • ★ ${num(s.star_rating)}`, val: `${hutNum(s.chemistry)} chem` }));
 
             el.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:12px;">
@@ -673,7 +673,7 @@ const App = (() => {
                     <div class="lb-grid">
                         ${miniBoard("Top Pucks", topPucks, "boards")}
                         ${miniBoard("Most Wins", topWins, "boards")}
-                        ${miniBoard("Popular Formations", topFormations, "boards")}
+                        ${miniBoard("Top Chemistry", topChemistry, "boards")}
                     </div>
                 </div>`;
 
