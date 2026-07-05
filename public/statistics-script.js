@@ -23,6 +23,7 @@ const App = (() => {
             nhl15:     ["VS", "SO"],
             nhllegacy: ["VS", "SO"],
         },
+        hut: "hut12",
     };
     const STATE = {
         tab:         "status",
@@ -37,13 +38,23 @@ const App = (() => {
         lbRange:    "day",
         players:    [],
         profileName:null,
-        profileJson:null,
+        hutView:    "overview",
+        hutMgrScreen: "grid",
+        hutMgrSort: "pucks_desc",
+        hutManagers:[],
+        hutManagerId:null,
+        hutCards:   [],
+        hutCardSort:"rating_desc",
+        hutNameMap: new Map(),
+        hutNamesReady:false,
+        hutNamesLoading:false,
+        hutMarket:  { state: "1", sort: "newest", trades: [], offset: 0, done: false, loading: false },
         cache:      new Map(),
     };
 
 
 
-    const TTL = { status: 10000, games: 5000, players: 60000, profile: 30000, history: 15000, lb: 60000 };
+    const TTL = { status: 10000, games: 5000, players: 60000, profile: 30000, history: 15000, lb: 60000, hut: 30000, hutManagers: 60000, hutBoards: 60000, hutNames: 300000, hutMarket: 15000 };
     const str  = v => (typeof v === "string" && v.trim()) ? v.trim() : "-";
     const num  = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
     const esc  = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -146,7 +157,7 @@ const App = (() => {
         return arr(data?.[mode.toLowerCase()]);
     };
 
-    // todo(dt): more sorting ways? or just new way to make advanced filters as the data that could be filtered from the db via api is so much
+    // todo: more sorting ways? or just new way to make advanced filters as the data that could be filtered from the db via api is so much
     const sortGames = (games, sort) => {
         const g = games.slice();
         switch (sort) {
@@ -288,17 +299,7 @@ const App = (() => {
 
     const loadProfile = async name => {
         STATE.profileName = name;
-        STATE.profileJson = null;
         renderPlayers();
-
-        const showOverview = () => {
-            $("profileOverview").style.display = "";
-            $("profileRaw").style.display      = "none";
-        };
-
-        $("ptabOverview").classList.add("active");
-        $("ptabRaw").classList.remove("active");
-        showOverview();
 
         $("profileOverview").innerHTML = `
             <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
@@ -313,8 +314,6 @@ const App = (() => {
                     ${[1,2,3].map(() => skelBlock(58)).join("")}
                 </div>
             </div>`;
-
-        $("profileRaw").textContent = "";
 
         const ver = STATE.playersVer;
 
@@ -451,7 +450,7 @@ const App = (() => {
                                 ${statTile("Games Played", totalGames)}
                                 ${statTile("Total Goals", totalGoals)}
                                 ${statTile("Goals / Game", avgGoals)}
-                                ${statTile("PP%", vsStats.ppPct != null ? vsStats.ppPct + "%" : "—")}
+                                ${statTile("PP%", vsStats.ppPct != null ? vsStats.ppPct + "%" : "-")}
                             </div>
                         </div>
                         <div>
@@ -463,9 +462,6 @@ const App = (() => {
                         </div>
                     </div>
                 </div>`;
-
-            STATE.profileJson = JSON.stringify({ profile, history: historyRaw }, null, 2);
-            $("profileRaw").textContent = STATE.profileJson;
 
         } catch (e) {
             console.error("[Profile]", e);
@@ -518,6 +514,771 @@ const App = (() => {
         }
     };
 
+    const hutEndpoint = path => endpoint(CFG.hut, path);
+    const hutNum = v => num(v).toLocaleString();
+    const hutPct = v => `${(num(v) * 100).toFixed(1)}%`;
+    const hutStr = v => (typeof v === "string" && v.trim()) ? v.trim() : "";
+    const hutManagerName = m => str(m?.team_name ?? m?.teamName);
+    const hutManagerAbbr = m => hutStr(m?.team_abbreviation ?? m?.teamAbbreviation).toUpperCase();
+    const hutGamertag = userId => STATE.hutNameMap.get(String(userId)) ?? "";
+
+    const hutManagerStatsUrl = hutEndpoint("/api/hut/stats/managers?sort=pucks&limit=500");
+
+    const hutWilson = (wins, games) => {
+        if (!games) return 0;
+        const z = 1.96;
+        const p = wins / games;
+        return (p + (z * z) / (2 * games) - z * Math.sqrt((p * (1 - p) + (z * z) / (4 * games)) / games)) / (1 + (z * z) / games);
+    };
+
+    // todo: more reliable way as resolving HUT user ids to gamertags is lwk scuffed
+    const hutNameVersions = ["nhl12", "nhl13", "nhl14", "nhl15", "nhllegacy", "nhl11", "nhl10"];
+
+    const loadHutNames = async () => {
+        if (STATE.hutNamesReady || STATE.hutNamesLoading) return;
+        STATE.hutNamesLoading = true;
+
+        try {
+            const results = await Promise.allSettled(hutNameVersions.map(ver =>
+                fetchJSON(endpoint(ver, "/api/reports/latest?limit=500"), TTL.hutNames)
+            ));
+
+            results.forEach(res => {
+                if (res.status !== "fulfilled") return;
+                arr(res.value).forEach(r => {
+                    const row = obj(r);
+                    const tag = hutStr(row.gamertag);
+                    if (row.user_id != null && tag && !STATE.hutNameMap.has(String(row.user_id)))
+                        STATE.hutNameMap.set(String(row.user_id), tag);
+                });
+            });
+
+            STATE.hutNamesReady = true;
+            applyHutNames();
+        } catch (e) {
+            console.error("[HUT Names]", e);
+        } finally {
+            STATE.hutNamesLoading = false;
+        }
+    };
+
+    const hutNoTagHtml = () =>
+        `no linked gamertag <span class="hut-help" tabindex="0" data-tip="Gamertags are read from the game report databases. Play at least one regular (non-HUT) online game in any NHL title on Zamboni and the gamertag links to this manager automatically.">?</span>`;
+
+    const applyHutNames = () => {
+        if (STATE.tab !== "hut-stats") return;
+        if (STATE.hutView === "overview") loadHutOverview();
+        if (STATE.hutView === "boards")   loadHutBoards();
+        if (STATE.hutView === "managers" && STATE.hutMgrScreen === "grid") renderHutManagers();
+        if (STATE.hutView === "market" && STATE.hutMarket.trades.length) renderHutMarket();
+        const gamerEl = $("hutDetailGamer");
+        if (gamerEl && STATE.hutManagerId != null) {
+            const tag = hutGamertag(STATE.hutManagerId);
+            gamerEl.innerHTML = tag ? `🎮 ${esc(tag)}` : hutNoTagHtml();
+        }
+    };
+
+    const loadHutOverview = async (force = false) => {
+        const el = $("hutViewOverview");
+        const statusUrl     = hutEndpoint("/api/hut/status");
+        const economyUrl    = hutEndpoint("/api/hut/stats/economy");
+        const formationsUrl = hutEndpoint("/api/hut/stats/squads/formations");
+        if (force) { bust(statusUrl); bust(economyUrl); bust(formationsUrl); bust(hutManagerStatsUrl); }
+
+        el.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div class="hut-hero-grid">${[1,2,3,4].map(() => skelBlock(72)).join("")}</div>
+                <div class="hut-ov-grid">${[1,2].map(() => skelBlock(140)).join("")}</div>
+                <div class="lb-grid">${[1,2,3].map(() => skelBlock(180)).join("")}</div>
+            </div>`;
+
+        try {
+            const [status, economy, mgrStats, formations] = await Promise.all([
+                fetchJSON(statusUrl, TTL.hut),
+                fetchJSON(economyUrl, TTL.hut).catch(() => null),
+                fetchJSON(hutManagerStatsUrl, TTL.hutBoards).catch(() => []),
+                fetchJSON(formationsUrl, TTL.hutBoards).catch(() => []),
+            ]);
+
+            const s = obj(status);
+            const e = obj(economy);
+
+            const hero = (icon, label, value, goto = "") => `
+                <div class="hut-hero fade-in${goto ? " hut-hero-link" : ""}"${goto ? ` data-hut-goto="${goto}" title="Open ${goto}"` : ""}>
+                    <div class="hut-hero-icon">${icon}</div>
+                    <div style="min-width:0;">
+                        <div class="hut-hero-val">${esc(String(value))}</div>
+                        <div class="hut-hero-label">${esc(label)}</div>
+                    </div>
+                </div>`;
+
+            const rankClass = i => ["r1","r2","r3","",""][i] ?? "";
+            const miniBoard = (label, rows, goto) => `
+                <div class="lb-card fade-in">
+                    <div class="lb-head" style="display:flex;align-items:center;">${label}
+                        <button class="btn" data-hut-goto="${goto}" style="margin-left:auto;font-size:10px;padding:3px 8px;">View all</button>
+                    </div>
+                    ${rows.length
+                ? rows.map((r, i) => `<div class="lb-row">
+                            <span class="lb-rank ${rankClass(i)}">${i + 1}</span>
+                            <span class="lb-name">${esc(r.name)}${r.sub ? `<span class="lb-sub" style="display:block;">${esc(r.sub)}</span>` : ""}</span>
+                            <span class="lb-val">${esc(r.val)}</span>
+                        </div>`).join("")
+                : `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px;">No data available</div>`
+            }
+                </div>`;
+
+            const mgrs = arr(mgrStats).map(obj);
+            const topPucks = mgrs.slice().sort((a, b) => num(b.pucks) - num(a.pucks)).slice(0, 5)
+                .map(m => ({ name: str(m.teamName), sub: hutGamertag(m.userId) || hutStr(m.teamAbbreviation), val: hutNum(m.pucks) }));
+            const topWins = mgrs.slice().sort((a, b) => num(b.wins) - num(a.wins)).filter(m => num(m.gamesPlayed) > 0).slice(0, 5)
+                .map(m => ({ name: str(m.teamName), sub: `${num(m.wins)}-${num(m.losses)}-${num(m.otl)}`, val: hutNum(m.wins) }));
+            const topFormations = arr(formations).map(obj).slice(0, 5)
+                .map(f => ({ name: `Formation ${num(f.formation_id)}`, sub: `★ ${num(f.avg_star_rating)} avg - ${num(f.avg_chemistry)} chem`, val: `${hutNum(f.squads)} squads` }));
+
+            el.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div class="hut-hero-grid">
+                        ${hero("👥", "Managers", hutNum(s.managers), "managers")}
+                        ${hero("🃏", "Owned Cards", hutNum(s.cards))}
+                        ${hero("🪙", "Pucks in Circulation", hutNum(e.totalPucks))}
+                        ${hero("🔨", "Open Trades", hutNum(s.openTrades), "market")}
+                    </div>
+                    <div class="hut-ov-grid">
+                        <div class="card fade-in">
+                            <div class="card-head"><span class="card-title">Database</span></div>
+                            <div style="padding:12px 14px;">
+                                <div class="stat-grid">
+                                    ${statTile("Squads", hutNum(s.squads), `${hutNum(s.activeSquads)} active`)}
+                                    ${statTile("Offers", hutNum(s.offers))}
+                                    ${statTile("Tournaments", hutNum(s.tournaments))}
+                                    ${statTile("Catalog Players", hutNum(s.catalogPlayers))}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card fade-in">
+                            <div class="card-head"><span class="card-title">Economy</span></div>
+                            <div style="padding:12px 14px;">
+                                <div class="stat-grid">
+                                    ${statTile("Avg Pucks", hutNum(e.avgPucks), "per manager")}
+                                    ${statTile("Max Pucks", hutNum(e.maxPucks), "richest manager")}
+                                    ${statTile("Active Listings", hutNum(e.activeListings), `${hutNum(e.totalListings)} all time`)}
+                                    ${statTile("Avg Start Price", hutNum(e.avgStartingPrice))}
+                                    ${statTile("Avg High Bid", hutNum(e.avgHighestBid))}
+                                    ${statTile("Buyout Total", hutNum(e.sumBuyout), "active listings")}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lb-grid">
+                        ${miniBoard("Top Pucks", topPucks, "boards")}
+                        ${miniBoard("Most Wins", topWins, "boards")}
+                        ${miniBoard("Popular Formations", topFormations, "boards")}
+                    </div>
+                </div>`;
+
+            loadHutNames();
+        } catch (err) {
+            el.innerHTML = errBox(`Failed to load HUT overview. ${err.message}`);
+        }
+    };
+
+    const loadHutManagers = async (force = false) => {
+        const url = hutEndpoint("/api/hut/managers");
+        if (force) { bust(url); bust(hutManagerStatsUrl); }
+
+        if (!force && STATE.hutManagers.length) { renderHutManagers(); loadHutNames(); return; }
+
+        $("hutManagerGrid").innerHTML = `${[1,2,3,4,5,6].map(() => skelBlock(120)).join("")}`;
+        $("hutMgrCount").textContent = "";
+
+        try {
+            const [rawList, rawStats] = await Promise.all([
+                fetchJSON(url, TTL.hutManagers),
+                fetchJSON(hutManagerStatsUrl, TTL.hutBoards).catch(() => []),
+            ]);
+
+            const recordMap = new Map(arr(rawStats).map(obj).map(r => [String(r.userId), r]));
+
+            STATE.hutManagers = arr(rawList).filter(m => m && typeof m === "object").map(m => {
+                const rec = obj(recordMap.get(String(m.user_id)));
+                return {
+                    userId: m.user_id,
+                    teamName: hutManagerName(m),
+                    abbr: hutManagerAbbr(m),
+                    pucks: num(m.pucks),
+                    wins: num(rec.wins),
+                    losses: num(rec.losses),
+                    otl: num(rec.otl),
+                    games: num(rec.gamesPlayed),
+                    points: num(rec.points),
+                    winPct: num(rec.winPct),
+                };
+            });
+
+            renderHutManagers();
+            loadHutNames();
+        } catch (e) {
+            $("hutManagerGrid").innerHTML = `<div style="grid-column:1/-1;">${errBox(`Failed to load managers. ${e.message}`)}</div>`;
+        }
+    };
+
+    const sortHutManagers = (list, sort) => {
+        const l = list.slice();
+        switch (sort) {
+            case "pucks_asc":   return l.sort((a, b) => a.pucks - b.pucks);
+            case "wins_desc":   return l.sort((a, b) => b.wins - a.wins || b.games - a.games);
+            case "winpct_desc": return l.sort((a, b) => hutWilson(b.wins, b.games) - hutWilson(a.wins, a.games));
+            case "games_desc":  return l.sort((a, b) => b.games - a.games);
+            case "name_asc":    return l.sort((a, b) => a.teamName.localeCompare(b.teamName));
+            case "id_asc":      return l.sort((a, b) => num(a.userId) - num(b.userId));
+            case "id_desc":     return l.sort((a, b) => num(b.userId) - num(a.userId));
+            default:            return l.sort((a, b) => b.pucks - a.pucks);
+        }
+    };
+
+    const renderHutManagers = () => {
+        const q = ($("hutManagerSearch")?.value ?? "").trim().toLowerCase();
+        let list = STATE.hutManagers;
+
+        if (q) {
+            list = list.filter(m =>
+                m.teamName.toLowerCase().includes(q) ||
+                m.abbr.toLowerCase().includes(q) ||
+                hutGamertag(m.userId).toLowerCase().includes(q) ||
+                String(m.userId ?? "").includes(q)
+            );
+        }
+
+        list = sortHutManagers(list, STATE.hutMgrSort);
+        $("hutMgrCount").textContent = `${list.length} manager${list.length === 1 ? "" : "s"}`;
+
+        if (!list.length) {
+            $("hutManagerGrid").innerHTML = `<div style="grid-column:1/-1;">${emptyState("🔍", "No managers found.", q ? `No results for "${q}"` : "")}</div>`;
+            return;
+        }
+
+        $("hutManagerGrid").innerHTML = list.map(m => {
+            const tag = hutGamertag(m.userId);
+            const winLabel = m.games > 0 ? hutPct(m.winPct) : "-";
+            const gamerLine = tag
+                ? `🎮 ${esc(tag)}`
+                : `ID ${esc(String(m.userId))}${STATE.hutNamesReady ? " - no gamertag" : ""}`;
+            return `<button class="hut-mgr-card fade-in" data-hut-user="${esc(String(m.userId))}">
+                <div class="hut-mgr-top">
+                    ${av(m.teamName, 38)}
+                    <div style="flex:1;min-width:0;">
+                        <div class="hut-mgr-name">${esc(m.teamName)}${m.abbr ? ` <span style="font-size:11px;color:var(--text-3);">${esc(m.abbr)}</span>` : ""}</div>
+                        <div class="hut-mgr-gamer">${gamerLine}</div>
+                    </div>
+                    <span class="hut-mgr-arr">›</span>
+                </div>
+                <div class="hut-mgr-stats">
+                    <div class="hut-mgr-stat"><span>Pucks</span><b>${hutNum(m.pucks)}</b></div>
+                    <div class="hut-mgr-stat"><span>Record</span><b>${m.games > 0 ? `${m.wins}-${m.losses}-${m.otl}` : "-"}</b></div>
+                    <div class="hut-mgr-stat"><span>Win %</span><b>${winLabel}</b></div>
+                </div>
+            </button>`;
+        }).join("");
+    };
+
+    const showHutMgrGrid = () => {
+        STATE.hutMgrScreen = "grid";
+        STATE.hutManagerId = null;
+        $("hutMgrToolbar").style.display = "";
+        $("hutMgrGridWrap").style.display = "";
+        $("hutManagerDetail").style.display = "none";
+        $("hutManagerDetail").innerHTML = "";
+    };
+
+    const sortHutCards = (cards, sort) => {
+        const c = cards.slice();
+        switch (sort) {
+            case "rating_asc": return c.sort((a, b) => num(a.rating) - num(b.rating));
+            case "gp_desc":    return c.sort((a, b) => num(b.gamesPlayed) - num(a.gamesPlayed));
+            case "uses_desc":  return c.sort((a, b) => num(b.usesRemaining) - num(a.usesRemaining));
+            case "newest":     return c.sort((a, b) => new Date(b.dateIssued) - new Date(a.dateIssued));
+            case "name_asc":   return c.sort((a, b) => (hutStr(a.name) || "zz").localeCompare(hutStr(b.name) || "zz"));
+            case "salary_desc":return c.sort((a, b) => num(b.salaryCap) - num(a.salaryCap));
+            default:           return c.sort((a, b) => num(b.rating) - num(a.rating));
+        }
+    };
+
+    const renderHutCards = () => {
+        const el = $("hutCardList");
+        if (!el) return;
+
+        const q = ($("hutCardSearch")?.value ?? "").trim().toLowerCase();
+        let cards = STATE.hutCards;
+
+        if (q) {
+            cards = cards.filter(c =>
+                (hutStr(c.name) || `Card #${c.dbId ?? ""}`).toLowerCase().includes(q) ||
+                hutStr(c.position).toLowerCase() === q ||
+                hutStr(c.deck).toLowerCase().includes(q) ||
+                hutStr(c.state).toLowerCase().includes(q)
+            );
+        }
+
+        cards = sortHutCards(cards, STATE.hutCardSort);
+        const shown = cards.slice(0, 100);
+
+        const countEl = $("hutCardCount");
+        if (countEl) countEl.textContent = cards.length > shown.length ? `showing ${shown.length} of ${cards.length}` : `${cards.length} card${cards.length === 1 ? "" : "s"}`;
+
+        if (!shown.length) {
+            el.innerHTML = emptyState("🃏", "No cards match.", q ? `No results for "${q}"` : "This manager has no cards yet.");
+            return;
+        }
+
+        el.innerHTML = shown.map(c => {
+            const nm   = hutStr(c.name) || `Card #${c.dbId ?? "?"}`;
+            const bits = [hutStr(c.position), hutStr(c.deck), hutStr(c.state)].filter(Boolean).join(" - ");
+            const tags = [`<span class="hut-tag">${hutNum(c.gamesPlayed)} GP</span>`];
+            if (c.usesRemaining != null) tags.push(`<span class="hut-tag">${hutNum(c.usesRemaining)} uses</span>`);
+            if (c.rare === true || num(c.rare) > 0) tags.push(`<span class="hut-tag good">Rare</span>`);
+            if (c.retired) tags.push(`<span class="hut-tag warn">Retired</span>`);
+            if (num(c.injuryGames) > 0) tags.push(`<span class="hut-tag warn">Injured ${num(c.injuryGames)}g</span>`);
+            return `<div class="hut-card-row">
+                <div class="hut-rating ${num(c.rating) >= 85 ? "gold" : ""}">${num(c.rating) || "-"}</div>
+                <div style="flex:1;min-width:0;">
+                    <div class="hut-card-name">${esc(nm)}</div>
+                    <div class="hut-card-sub">${esc(bits)}</div>
+                </div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">${tags.join("")}</div>
+            </div>`;
+        }).join("");
+    };
+
+    const loadHutManager = async (userId, force = false) => {
+        STATE.hutManagerId = String(userId);
+        STATE.hutMgrScreen = "detail";
+        STATE.hutCards     = [];
+        STATE.hutCardSort  = "rating_desc";
+
+        const profileUrl  = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}`);
+        const cardsUrl    = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}/cards?limit=500`);
+        const offersUrl   = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}/offers`);
+        const watchingUrl = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}/watching`);
+        if (force) [profileUrl, cardsUrl, offersUrl, watchingUrl].forEach(bust);
+
+        $("hutMgrToolbar").style.display = "none";
+        $("hutMgrGridWrap").style.display = "none";
+        const detail = $("hutManagerDetail");
+        detail.style.display = "";
+
+        detail.innerHTML = `
+            <button class="hut-back" data-hut-back>‹ All Managers</button>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                ${skelBlock(78)}
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;">
+                    ${[1,2,3,4,5,6].map(() => skelBlock(58)).join("")}
+                </div>
+                ${skelBlock(120)}
+            </div>`;
+
+        try {
+            const [profile, cardsRaw, offersRaw, watchingRaw] = await Promise.all([
+                fetchJSON(profileUrl, TTL.hut),
+                fetchJSON(cardsUrl, TTL.hut).catch(() => []),
+                fetchJSON(offersUrl, TTL.hut).catch(() => []),
+                fetchJSON(watchingUrl, TTL.hut).catch(() => []),
+            ]);
+
+            if (!profile || typeof profile !== "object") throw new Error("Invalid manager response");
+            if (STATE.hutManagerId !== String(userId) || STATE.hutMgrScreen !== "detail") return;
+
+            const gamer   = obj(profile.gamerInfo);
+            const general = obj(profile.general);
+            const record  = obj(profile.record);
+            const squads  = arr(profile.squads);
+            const cards   = arr(cardsRaw);
+            const offers  = arr(offersRaw);
+            const watching = arr(watchingRaw);
+
+            STATE.hutCards = cards;
+
+            const name  = str(gamer.team_name);
+            const abbr  = hutStr(gamer.team_abbreviation).toUpperCase();
+            const tag   = hutGamertag(userId);
+            const pucks = general.pucks ?? gamer.pucks;
+            const winPctLabel = `${(num(record.winPct) * 100).toFixed(1)}%`;
+
+            const rated      = cards.filter(c => num(c.rating) > 0);
+            const avgRating  = rated.length ? (rated.reduce((s, c) => s + num(c.rating), 0) / rated.length).toFixed(1) : "-";
+            const bestCard   = rated.slice().sort((a, b) => num(b.rating) - num(a.rating))[0];
+            const rareCount  = cards.filter(c => c.rare === true || num(c.rare) > 0).length;
+            const listedCount = cards.filter(c => hutStr(c.state) === "InCardSell" || hutStr(c.state) === "ImprovedSale").length;
+            const retiredCount = cards.filter(c => c.retired).length;
+            const cardGames  = cards.reduce((s, c) => s + num(c.gamesPlayed), 0);
+            const activeOffers = offers.filter(o => hutStr(o.state) === "Active").length;
+
+            const squadRows = squads.map(s => `
+                <div class="hut-squad-row">
+                    <div class="hut-squad-name">${esc(str(s.squad_name))}</div>
+                    <span class="hut-squad-stat">★ <b>${num(s.star_rating)}</b></span>
+                    <span class="hut-squad-stat">OFF <b>${num(s.rating_off)}</b></span>
+                    <span class="hut-squad-stat">DEF <b>${num(s.rating_def)}</b></span>
+                    <span class="hut-squad-stat">GK <b>${num(s.rating_gk)}</b></span>
+                    <span class="hut-squad-stat">CHEM <b>${num(s.chemistry)}</b></span>
+                    ${s.active ? `<span class="hut-tag good">Active</span>` : ""}
+                </div>`).join("");
+
+            detail.innerHTML = `
+                <button class="hut-back" data-hut-back>‹ All Managers</button>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    <div class="hut-detail-head fade-in">
+                        <div class="profile-av" style="width:52px;height:52px;font-size:18px;">${esc(String(name).replace(/[^a-zA-Z0-9]/g, "").slice(0, 2).toUpperCase() || "?")}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div class="profile-name">${esc(name)}${abbr ? ` <span style="font-size:12px;color:var(--text-2);">${esc(abbr)}</span>` : ""}</div>
+                            <div class="profile-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span class="hut-tag blue" id="hutDetailGamer" style="overflow:visible;">${tag ? `🎮 ${esc(tag)}` : (STATE.hutNamesReady ? hutNoTagHtml() : "resolving gamertag...")}</span>
+                                <span>ID: ${esc(String(userId))}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:5px;flex-shrink:0;">
+                            <button class="btn" onclick="navigator.clipboard.writeText(${JSON.stringify(String(userId))})">Copy ID</button>
+                        </div>
+                    </div>
+                    <div class="fade-in">
+                        <div class="section-title">Record</div>
+                        <div class="stat-grid">
+                            ${statTile("Pucks", hutNum(pucks))}
+                            ${statTile("W / L / OTL", `${num(record.wins)}/${num(record.losses)}/${num(record.otl)}`, `${winPctLabel} win`)}
+                            ${statTile("Games Played", hutNum(record.gamesPlayed))}
+                            ${statTile("Points", hutNum(record.points))}
+                            ${statTile("Squads", squads.length, `${squads.filter(s => s.active).length} active`)}
+                        </div>
+                    </div>
+                    <div class="fade-in">
+                        <div class="section-title">Collection & Market</div>
+                        <div class="stat-grid">
+                            ${statTile("Cards Owned", hutNum(profile.cardCount))}
+                            ${statTile("Avg Card Rating", avgRating)}
+                            ${bestCard ? statTile("Best Card", num(bestCard.rating), hutStr(bestCard.name) || `Card #${bestCard.dbId ?? "?"}`) : ""}
+                            ${statTile("Rare Cards", hutNum(rareCount))}
+                            ${statTile("Card Games", hutNum(cardGames), "total GP")}
+                            ${statTile("Retired Cards", hutNum(retiredCount))}
+                            ${statTile("Listed For Sale", hutNum(listedCount))}
+                            ${statTile("Auction Offers", hutNum(offers.length), `${hutNum(activeOffers)} active`)}
+                            ${statTile("Watching Trades", hutNum(watching.length))}
+                        </div>
+                    </div>
+                    <div class="fade-in">
+                        <div class="hut-section-row">
+                            <div class="section-title">Squads</div>
+                        </div>
+                        ${squads.length
+                ? `<div style="display:flex;flex-direction:column;gap:6px;">${squadRows}</div>`
+                : emptyState("🧊", "No squads found.")
+            }
+                    </div>
+                    <div class="fade-in">
+                        <div class="hut-section-row">
+                            <div class="section-title">Cards</div>
+                            <span id="hutCardCount" style="font-size:11px;color:var(--text-3);"></span>
+                            <input class="search" id="hutCardSearch" type="text" placeholder="Filter cards..." style="width:150px;">
+                            <div class="dd">
+                                <button class="dd-btn" id="hutCardSortBtn"><span id="hutCardSortLabel">Rating ↓</span><span class="dd-chevron">▼</span></button>
+                                <div class="dd-menu" id="hutCardSortMenu">
+                                    <div class="dd-item active" data-sort="rating_desc">Rating ↓</div>
+                                    <div class="dd-item" data-sort="rating_asc">Rating ↑</div>
+                                    <div class="dd-item" data-sort="gp_desc">Most Played</div>
+                                    <div class="dd-item" data-sort="uses_desc">Most Uses Left</div>
+                                    <div class="dd-item" data-sort="newest">Newest</div>
+                                    <div class="dd-item" data-sort="name_asc">Name A-Z</div>
+                                    <div class="dd-item" data-sort="salary_desc">Salary ↓</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="hutCardList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                    </div>
+                </div>`;
+
+            setupDd("hutCardSortBtn", "hutCardSortMenu", (sort, label) => {
+                STATE.hutCardSort = sort;
+                $("hutCardSortLabel").textContent = label;
+                renderHutCards();
+            });
+            $("hutCardSearch")?.addEventListener("input", renderHutCards);
+
+            renderHutCards();
+            loadHutNames();
+
+        } catch (e) {
+            console.error("[HUT Manager]", e);
+            detail.innerHTML = `
+                <button class="hut-back" data-hut-back>‹ All Managers</button>
+                ${errBox(`Could not load manager ${userId}. ${e.message}`)}`;
+        }
+    };
+
+    const loadHutBoards = async (force = false) => {
+        const el = $("hutViewBoards");
+
+        const ownedUrl      = hutEndpoint("/api/hut/stats/cards/most-owned?limit=10");
+        const playedUrl     = hutEndpoint("/api/hut/stats/cards/most-played?limit=10");
+        const squadsStarUrl = hutEndpoint("/api/hut/stats/squads/top?sort=star&limit=10");
+        const squadsChemUrl = hutEndpoint("/api/hut/stats/squads/top?sort=chemistry&limit=10");
+        const formationsUrl = hutEndpoint("/api/hut/stats/squads/formations");
+
+        if (force) [hutManagerStatsUrl, ownedUrl, playedUrl, squadsStarUrl, squadsChemUrl, formationsUrl].forEach(bust);
+
+        el.innerHTML = `<div class="lb-grid">${[1,2,3,4,5,6,7,8,9].map(() => skelBlock(180)).join("")}</div>`;
+
+        const [mgrRes, ownedRes, playedRes, starRes, chemRes, formRes] = await Promise.allSettled([
+            fetchJSON(hutManagerStatsUrl, TTL.hutBoards),
+            fetchJSON(ownedUrl, TTL.hutBoards),
+            fetchJSON(playedUrl, TTL.hutBoards),
+            fetchJSON(squadsStarUrl, TTL.hutBoards),
+            fetchJSON(squadsChemUrl, TTL.hutBoards),
+            fetchJSON(formationsUrl, TTL.hutBoards),
+        ]);
+
+        const ok   = res => res.status === "fulfilled" ? arr(res.value).map(obj) : null;
+        const mgrs = ok(mgrRes);
+        const mgrSub = m => {
+            const tag = hutGamertag(m.userId);
+            const rec = num(m.gamesPlayed) > 0 ? `${num(m.wins)}-${num(m.losses)}-${num(m.otl)} - ${num(m.gamesPlayed)} games` : "no games";
+            return tag ? `${tag} - ${rec}` : rec;
+        };
+
+        const mgrBoard = (sortFn, filterFn, valFn) => mgrs
+            ? mgrs.filter(filterFn).sort(sortFn).slice(0, 10).map(m => ({ name: str(m.teamName), sub: mgrSub(m), val: valFn(m) }))
+            : null;
+
+        const boards = [
+            { group: "Managers", label: "Top Pucks",
+                rows: mgrBoard((a, b) => num(b.pucks) - num(a.pucks), () => true, m => hutNum(m.pucks)) },
+            { group: "Managers", label: "Most Wins",
+                rows: mgrBoard((a, b) => num(b.wins) - num(a.wins), m => num(m.gamesPlayed) > 0, m => hutNum(m.wins)) },
+            { group: "Managers", label: "Best Win % (weighted)",
+                rows: mgrBoard((a, b) => hutWilson(num(b.wins), num(b.gamesPlayed)) - hutWilson(num(a.wins), num(a.gamesPlayed)), m => num(m.gamesPlayed) > 0, m => hutPct(m.winPct)) },
+            { group: "Managers", label: "Most Points",
+                rows: mgrBoard((a, b) => num(b.points) - num(a.points), m => num(m.gamesPlayed) > 0, m => hutNum(m.points)) },
+            { group: "Managers", label: "Most Games",
+                rows: mgrBoard((a, b) => num(b.gamesPlayed) - num(a.gamesPlayed), m => num(m.gamesPlayed) > 0, m => hutNum(m.gamesPlayed)) },
+            { group: "Cards", label: "Most Owned",
+                rows: ok(ownedRes)?.map(r => ({ name: str(r.name), sub: `${num(r.rating)} OVR ${hutStr(r.position)} - ${num(r.owners)} owners`, val: `${hutNum(r.copies)}x` })) },
+            { group: "Cards", label: "Most Played",
+                rows: ok(playedRes)?.map(r => ({ name: str(r.name), sub: `${num(r.rating)} OVR - ${num(r.copies)} copies`, val: `${hutNum(r.totalGamesPlayed)} GP` })) },
+            { group: "Squads", label: "Top Squads",
+                rows: ok(starRes)?.map(r => ({ name: str(r.squad_name), sub: `${hutStr(r.team_name)}${r.active ? " - active" : ""}`, val: `★ ${num(r.star_rating)}` })) },
+            { group: "Squads", label: "Best Chemistry",
+                rows: ok(chemRes)?.map(r => ({ name: str(r.squad_name), sub: `${hutStr(r.team_name)} - ★ ${num(r.star_rating)}`, val: hutNum(r.chemistry) })) },
+            { group: "Squads", label: "Popular Formations",
+                rows: ok(formRes)?.map(r => ({ name: `Formation ${num(r.formation_id)}`, sub: `★ ${num(r.avg_star_rating)} avg - ${num(r.avg_chemistry)} chem`, val: `${hutNum(r.squads)} squads` })) },
+        ];
+
+        const rankClass = i => ["r1","r2","r3","",""][i] ?? "";
+        const boardCard = b => {
+            let body;
+            if (b.rows === null || b.rows === undefined) {
+                body = `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px;">Failed to load</div>`;
+            } else if (!b.rows.length) {
+                body = `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px;">No data available</div>`;
+            } else {
+                body = b.rows.slice(0, 10).map((d, i) => `<div class="lb-row">
+                    <span class="lb-rank ${rankClass(i)}">${i + 1}</span>
+                    <span class="lb-name">${esc(d.name)}${d.sub ? `<span class="lb-sub" style="display:block;">${esc(d.sub)}</span>` : ""}</span>
+                    <span class="lb-val">${esc(d.val)}</span>
+                </div>`).join("");
+            }
+            return `<div class="lb-card fade-in"><div class="lb-head">${b.label}</div>${body}</div>`;
+        };
+
+        const groups = ["Managers", "Cards", "Squads"];
+        el.innerHTML = groups.map(g => `
+            <div class="section-title" style="margin-top:${g === groups[0] ? "0" : "14px"};">${g}</div>
+            <div class="lb-grid">${boards.filter(b => b.group === g).map(boardCard).join("")}</div>
+        `).join("");
+
+        loadHutNames();
+    };
+
+    const HUT_MKT_PAGE = 50;
+
+    const hutTradeEndsIn = t => {
+        if (!num(t.durationSeconds)) return "";
+        const end = (num(t.createdAtSeconds) + num(t.durationSeconds)) * 1000;
+        const diff = end - Date.now();
+        if (diff <= 0) return "ended";
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        return h > 0 ? `ends in ${h}h ${m}m` : `ends in ${m}m`;
+    };
+
+    const hutTradeDate = s => {
+        const d = new Date(num(s) * 1000);
+        return isNaN(d.getTime()) || !num(s) ? "" : d.toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    };
+
+    const hutMarketUrl = offset => hutEndpoint(`/api/hut/market/trades?state=${STATE.hutMarket.state}&limit=${HUT_MKT_PAGE}&offset=${offset}`);
+
+    const loadHutMarket = async (force = false) => {
+        const mkt = STATE.hutMarket;
+        if (mkt.loading) return;
+
+        if (force || !mkt.trades.length) {
+            mkt.trades = [];
+            mkt.offset = 0;
+            mkt.done   = false;
+            if (force) {
+                for (const k of [...STATE.cache.keys()]) {
+                    if (k.includes("/api/hut/market/")) STATE.cache.delete(k);
+                }
+            }
+            $("hutMarketList").innerHTML = `${[1,2,3,4,5].map(() => skelBlock(52)).join("")}`;
+            $("hutMarketMore").style.display = "none";
+            await fetchHutMarketPage();
+        } else {
+            renderHutMarket();
+        }
+    };
+
+    const fetchHutMarketPage = async () => {
+        const mkt = STATE.hutMarket;
+        mkt.loading = true;
+        $("hutMarketMore").textContent = "Loading...";
+
+        try {
+            const rows = arr(await fetchJSON(hutMarketUrl(mkt.offset), TTL.hutMarket)).map(obj);
+            mkt.trades = mkt.trades.concat(rows);
+            mkt.offset += rows.length;
+            if (rows.length < HUT_MKT_PAGE) mkt.done = true;
+            renderHutMarket();
+            loadHutNames();
+        } catch (e) {
+            $("hutMarketList").innerHTML = errBox(`Failed to load market. ${e.message}`);
+            $("hutMarketMore").style.display = "none";
+        } finally {
+            mkt.loading = false;
+            $("hutMarketMore").textContent = "Load more";
+        }
+    };
+
+    const sortHutTrades = (trades, sort) => {
+        const t = trades.slice();
+        const endsAt = x => num(x.createdAtSeconds) + num(x.durationSeconds);
+        switch (sort) {
+            case "ending":      return t.sort((a, b) => endsAt(a) - endsAt(b));
+            case "bid_desc":    return t.sort((a, b) => num(b.highestBid) - num(a.highestBid));
+            case "buyout_desc": return t.sort((a, b) => num(b.buyOutPrice) - num(a.buyOutPrice));
+            case "rating_desc": return t.sort((a, b) => num(b.rating) - num(a.rating));
+            default:            return t.sort((a, b) => num(b.tradeId) - num(a.tradeId));
+        }
+    };
+
+    const renderHutMarket = () => {
+        const mkt = STATE.hutMarket;
+        const q = ($("hutMktSearch")?.value ?? "").trim().toLowerCase();
+
+        let trades = mkt.trades;
+        if (q) {
+            trades = trades.filter(t =>
+                hutStr(t.player).toLowerCase().includes(q) ||
+                hutStr(t.sellerName).toLowerCase().includes(q) ||
+                hutGamertag(t.sellerId).toLowerCase().includes(q)
+            );
+        }
+        trades = sortHutTrades(trades, mkt.sort);
+
+        $("hutMktCount").textContent = `${trades.length} trade${trades.length === 1 ? "" : "s"}${mkt.done ? "" : " loaded"}`;
+        $("hutMarketMore").style.display = mkt.done ? "none" : "";
+
+        if (!trades.length) {
+            $("hutMarketList").innerHTML = emptyState("🔨", "No trades found.", q ? `No results for "${q}"` : "The auction house is quiet right now. New listings show up here automatically.");
+            return;
+        }
+
+        const stateTag = s => {
+            const name = hutStr(s) || "Unknown";
+            const cls = name === "Active" ? "good" : (name === "Canceled" || name === "Expired") ? "warn" : "blue";
+            return `<span class="hut-tag ${cls}">${esc(name)}</span>`;
+        };
+
+        $("hutMarketList").innerHTML = trades.map(t => {
+            const player = hutStr(t.player) || `Card #${t.cardId ?? "?"}`;
+            const seller = hutStr(t.sellerName) || hutGamertag(t.sellerId) || `User ${t.sellerId ?? "?"}`;
+            const listed = hutTradeDate(t.createdAtSeconds);
+            const ends   = hutStr(t.state) === "Active" ? hutTradeEndsIn(t) : "";
+            return `<div class="hut-trade fade-in">
+                <div class="hut-trade-row" data-trade="${esc(String(t.tradeId))}">
+                    <div class="hut-rating ${num(t.rating) >= 85 ? "gold" : ""}">${num(t.rating) || "-"}</div>
+                    <div style="flex:1;min-width:120px;">
+                        <div class="hut-card-name">${esc(player)}${hutStr(t.position) ? ` <span style="color:var(--text-3);font-size:10px;">${esc(hutStr(t.position))}</span>` : ""}</div>
+                        <div class="hut-card-sub">Seller: ${esc(seller)}${listed ? ` - listed ${esc(listed)}` : ""}</div>
+                    </div>
+                    <div class="hut-trade-prices">
+                        <span class="hut-price">Start <b>${hutNum(t.startingPrice)}</b></span>
+                        <span class="hut-price">Bid <b>${num(t.highestBid) > 0 ? hutNum(t.highestBid) : "-"}</b></span>
+                        <span class="hut-price">Buyout <b>${num(t.buyOutPrice) > 0 ? hutNum(t.buyOutPrice) : "-"}</b></span>
+                    </div>
+                    ${ends ? `<span class="hut-trade-ends">${esc(ends)}</span>` : ""}
+                    ${stateTag(t.state)}
+                    <span class="hut-mgr-arr" style="align-self:center;">›</span>
+                </div>
+                <div class="hut-trade-detail" id="hutTradeDetail-${esc(String(t.tradeId))}" style="display:none;"></div>
+            </div>`;
+        }).join("");
+    };
+
+    const toggleHutTrade = async tradeId => {
+        const box = $(`hutTradeDetail-${tradeId}`);
+        if (!box) return;
+
+        if (box.style.display !== "none") { box.style.display = "none"; return; }
+        box.style.display = "";
+        if (box.dataset.loaded) return;
+
+        box.innerHTML = skelBlock(56);
+
+        try {
+            const d = obj(await fetchJSON(hutEndpoint(`/api/hut/market/trade/${encodeURIComponent(tradeId)}`), TTL.hutMarket));
+            const offers = arr(d.offers).map(obj);
+
+            const offerRows = offers.map(o => {
+                const bidder = hutGamertag(o.bidderId) || `User ${o.bidderId ?? "?"}`;
+                const cardCount = Array.isArray(o.cardIds) ? o.cardIds.length : 0;
+                const when = hutTradeDate(o.createdAtSeconds);
+                return `<div class="hut-offer-row">
+                    <span style="flex:1;min-width:90px;">${esc(bidder)}</span>
+                    <b>${hutNum(o.credits)} pucks</b>
+                    ${cardCount ? `<span class="hut-tag">+${cardCount} card${cardCount === 1 ? "" : "s"}</span>` : ""}
+                    <span class="hut-tag ${hutStr(o.state) === "WinningBid" || hutStr(o.state) === "Accepted" ? "good" : hutStr(o.state) === "Active" ? "blue" : ""}">${esc(hutStr(o.state) || "Unknown")}</span>
+                    ${when ? `<span style="font-size:10px;color:var(--text-3);">${esc(when)}</span>` : ""}
+                </div>`;
+            }).join("");
+
+            box.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:${offers.length ? "8px" : "0"};">
+                    <span class="hut-tag">👁 ${hutNum(d.watchers)} watching</span>
+                    <span class="hut-tag">${hutNum(offers.length)} bid${offers.length === 1 ? "" : "s"}</span>
+                </div>
+                ${offers.length ? `<div style="display:flex;flex-direction:column;gap:5px;">${offerRows}</div>` : `<div style="font-size:11px;color:var(--text-3);">No bids on this trade yet.</div>`}`;
+            box.dataset.loaded = "1";
+        } catch (e) {
+            box.innerHTML = errBox(`Could not load trade ${tradeId}. ${e.message}`);
+        }
+    };
+
+    const loadHutTab = (force = false) => {
+        if (STATE.hutView === "overview") loadHutOverview(force);
+        if (STATE.hutView === "managers") loadHutManagers(force);
+        if (STATE.hutView === "market")   loadHutMarket(force);
+        if (STATE.hutView === "boards")   loadHutBoards(force);
+    };
+
+    const selectHutView = view => {
+        STATE.hutView = view;
+        $("hutViewGroup").querySelectorAll(".btn-seg").forEach(b => b.classList.toggle("active", b.dataset.hutView === view));
+        $("hutViewOverview").classList.toggle("active", view === "overview");
+        $("hutViewManagers").classList.toggle("active", view === "managers");
+        $("hutViewMarket").classList.toggle("active", view === "market");
+        $("hutViewBoards").classList.toggle("active", view === "boards");
+        loadHutTab();
+    };
+
     const selectTab = tab => {
         STATE.tab = tab;
         document.querySelectorAll(".nav-btn[data-tab]").forEach(b =>
@@ -534,6 +1295,7 @@ const App = (() => {
         if (tab === "games")        loadGames();
         if (tab === "players")      loadPlayers();
         if (tab === "leaderboards") loadLeaderboards();
+        if (tab === "hut-stats")    loadHutTab();
     };
 
     const setupDd = (btnId, menuId, onSelect) => {
@@ -614,31 +1376,6 @@ const App = (() => {
             if (btn) loadProfile(btn.dataset.name);
         });
 
-        $("ptabOverview")?.addEventListener("click", () => {
-            $("profileOverview").style.display = "";
-            $("profileRaw").style.display      = "none";
-            $("ptabOverview").classList.add("active");
-            $("ptabRaw").classList.remove("active");
-        });
-
-        $("ptabRaw")?.addEventListener("click", () => {
-            $("profileOverview").style.display = "none";
-            $("profileRaw").style.display      = "";
-            $("ptabRaw").classList.add("active");
-            $("ptabOverview").classList.remove("active");
-        });
-
-        $("copyJsonBtn")?.addEventListener("click", () => {
-            const text = STATE.profileJson;
-            if (!text) return;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = $("copyJsonBtn");
-                const orig = btn.textContent;
-                btn.textContent = "Copied!";
-                setTimeout(() => { btn.textContent = orig; }, 1500);
-            }).catch(() => {});
-        });
-
         setupDd("gamesVersionBtn", "gamesVersionMenu", (val, label) => {
             STATE.gamesVer  = val;
             STATE.gamesMode = "VS";
@@ -670,15 +1407,66 @@ const App = (() => {
             STATE.playersMode = "VS";
             STATE.players     = [];
             STATE.profileName = null;
-            STATE.profileJson = null;
             $("playersVersionLabel").textContent = label;
             $("profileOverview").innerHTML = `<div class="empty-state" style="height:100%;"><span class="empty-icon">👆</span>Select a player from the list<span class="empty-hint">Their stats and recent matches will appear here</span></div>`;
-            $("profileRaw").textContent = "";
-            $("profileRaw").style.display = "none";
-            $("profileOverview").style.display = "";
-            $("ptabOverview").classList.add("active");
-            $("ptabRaw").classList.remove("active");
             loadPlayers(true);
+        });
+
+        $("hutRefresh")?.addEventListener("click", () => {
+            if (STATE.hutView === "managers" && STATE.hutMgrScreen === "detail") { loadHutManager(STATE.hutManagerId, true); return; }
+            if (STATE.hutView === "managers") STATE.hutManagers = [];
+            loadHutTab(true);
+        });
+
+        $("hutViewGroup")?.querySelectorAll("[data-hut-view]").forEach(btn =>
+            btn.addEventListener("click", () => selectHutView(btn.dataset.hutView))
+        );
+
+        $("hutManagerSearch")?.addEventListener("input", renderHutManagers);
+
+        setupDd("hutMgrSortBtn", "hutMgrSortMenu", (sort, label) => {
+            STATE.hutMgrSort = sort;
+            $("hutMgrSortLabel").textContent = label;
+            renderHutManagers();
+        });
+
+        $("hutManagerGrid")?.addEventListener("click", e => {
+            const btn = e.target.closest("[data-hut-user]");
+            if (btn) loadHutManager(btn.dataset.hutUser);
+        });
+
+        $("hutManagerDetail")?.addEventListener("click", e => {
+            if (e.target.closest("[data-hut-back]")) showHutMgrGrid();
+        });
+
+        $("hutViewOverview")?.addEventListener("click", e => {
+            const btn = e.target.closest("[data-hut-goto]");
+            if (btn) selectHutView(btn.dataset.hutGoto);
+        });
+
+        setupDd("hutMktStateBtn", "hutMktStateMenu", (val, label) => {
+            STATE.hutMarket.state = val;
+            $("hutMktStateLabel").textContent = label;
+            loadHutMarket(true);
+        });
+
+        setupDd("hutMktSortBtn", "hutMktSortMenu", (sort, label) => {
+            STATE.hutMarket.sort = sort;
+            $("hutMktSortLabel").textContent = label;
+            if (!STATE.hutMarket.loading) renderHutMarket();
+        });
+
+        $("hutMktSearch")?.addEventListener("input", () => {
+            if (!STATE.hutMarket.loading) renderHutMarket();
+        });
+
+        $("hutMarketMore")?.addEventListener("click", () => {
+            if (!STATE.hutMarket.loading && !STATE.hutMarket.done) fetchHutMarketPage();
+        });
+
+        $("hutMarketList")?.addEventListener("click", e => {
+            const row = e.target.closest("[data-trade]");
+            if (row) toggleHutTrade(row.dataset.trade);
         });
 
         setupDd("lbVersionBtn", "lbVersionMenu", (val, label) => {

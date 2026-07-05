@@ -1,8 +1,8 @@
 {
   "name": "zamboni-website",
-  "version": "2.0.0",
+  "version": "2.6.0",
   "author": "dtzdev",
-  "license": "ISC",
+  "license": "GPL-3.0-or-later",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "node-fetch": "^3.3.2"
+    "express": "^5.1.0"
   }
 }

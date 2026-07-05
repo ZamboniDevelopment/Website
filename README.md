@@ -1,24 +1,22 @@
-# Zamboni Home And Statistics Website
-
-> “For some unknown hockey game made by some unknown company called ea”
+# [Zamboni Home And Statistics Website](https://zamboni.gg)
 
 ---
 
 ##  Overview
 
 **Zamboni.gg** is a web-based analytics dashboard that connects to custom **Zamboni's APIService's** REST Api. <br>
-It provides a clear, interactive interface for viewing player stats, ongoing games, and live API data.  
+It provides a clear, interactive interface for viewing player stats, ongoing games, and live API data.
 
 Website includes:
-- Small FAQ section
-- General information about the project
-- Discord join link
-- A **(semi) responsive TailwindCSS-based UI**
+- General information about the project.
+- Small FAQ section.
+- Discord and other links.
 
 Statistics Includes:
+- Real-time server status display.
 - List of recent games with status on who won and other details.
-- Player profile visualization with **stats** and **recent game** data
-- Real-time server status display
+- Player profile visualization with **stats** and **recent game** data.
+- **HUT Stats** displaying the general, per manager, leaderboard and market data.
 
 ---
 
@@ -34,8 +32,6 @@ If you are intered in running the project locally, follow these steps:
 ## Todo
 Some things that probs would make this better
 
-- More FAQ Content
-- Better Code Documentation
-- Better Responsiveness
-- Overall improvements
-- lot of other shit tbh
+- Better code documentation.
+- Mobile optimization is always good thing to improve!
+- Overall improvements. (some TODOs in statistics-script.js)
