@@ -10,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
+app.disable("x-powered-by");
 
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
@@ -79,6 +80,7 @@ if (isLocal) {
         /^\/nhl14\/.*/,
         /^\/nhl15\/.*/,
         /^\/nhllegacy\/.*/,
+        /^\/hut12\/.*/,
         /^\/api\/.*/,
         /^\/status\/.*/
     ];
