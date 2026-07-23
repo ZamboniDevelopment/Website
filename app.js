@@ -12,6 +12,29 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.disable("x-powered-by");
 
+app.get("/llms.txt", (req, res) => {
+    res.type("text/plain");
+
+    const llmsTxtContent = `# Zamboni
+                                > Community-run private servers for classic NHL games on RPCS3.
+
+                                ## Core Pages
+
+                                - [/](https://zamboni.gg): The main landing page for Zamboni private servers, including setup requirements and project information.
+                                - [/statistics](https://zamboni.gg/statistics): Real-time server diagnostics, player counts, and network matchmaking statistics across all supported NHL iterations.
+
+                                ## Supported Titles
+
+                                - **NHL 10**
+                                - **NHL 11**
+                                - **NHL 12**
+                                - **NHL 13**
+                                - **NHL 14**
+                                - **NHL 15**
+                                - **NHL Legacy Edition**`;
+res.send(llmsTxtContent);
+});
+
 app.get("/robots.txt", (req, res) => {
     res.type("text/plain");
     res.send("User-agent: *\nAllow: /\nSitemap: https://zamboni.gg");

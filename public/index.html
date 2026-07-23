@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Zamboni | Play NHL 10, 11, 12, 13, 14, 15 and Legacy Online</title>
-    <meta name="description" content="Zamboni brings back online multiplayer for classic NHL games. Play NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition online on RPCS3 using community-run private servers.">
+    <meta name="description" content="Zamboni brings back online multiplayer for classic NHL games. Play from NHL 10 to NHL Legacy Edition online on RPCS3 using community-run servers.">
     <meta name="keywords" content="NHL 10 online, NHL 11 online, NHL 12 online, NHL 13 online, NHL 14 online, NHL 15 online, NHL Legacy online, RPCS3 NHL, NHL private server, classic NHL multiplayer, Zamboni NHL">
     <meta name="robots" content="index, follow">
     <meta property="og:title" content="Zamboni | Classic NHL Online Servers">
@@ -14,6 +14,8 @@
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Zamboni | Classic NHL Online Servers">
     <meta name="twitter:description" content="Play NHL 10, 11, 12, 13, 14, 15 and Legacy online again with community-run private servers.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
     <link rel="canonical" href="https://zamboni.gg/">
     <link rel="icon" href="zamboni-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -600,11 +602,11 @@
         <div style="margin-top:2px;">
             <div class="faq-item">
                 <h3>What is Zamboni?</h3>
-                <p>Zamboni is a community-driven project restoring online multiplayer for classic NHL games on RPCS3 - including NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition.</p>
+                <p>Zamboni is a community-driven project restoring online multiplayer for classic NHL games on RPCS3. Including NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition. We offer the best private servers and largest community for old NHL game's!</p>
             </div>
             <div class="faq-item">
                 <h3>How do I play online on PC?</h3>
-                <p>Join our Discord and follow the setup guide. You will need RPCS3 and a legally obtained copy of the game before connecting to the servers.</p>
+                <p>Join our Discord and follow the setup guide. Setup guide can be found in the channel #how-to-play! Don't hesitate to ask for help if help is needed! You will need RPCS3 and a legally obtained copy of the game before connecting to the servers.</p>
             </div>
             <div class="faq-item">
                 <h3>I lost access to the Discord server. Can I appeal?</h3>
@@ -625,84 +627,82 @@
                 <p>Yes. Zamboni is open source - developers can contribute via GitHub.</p>
             </div>
         </div>
-        <footer style="text-align:center; color:rgba(229,231,235,.25); margin-top:36px; font-size:13px;">
-            &copy; 2026 Zamboni.gg - Fan-made NHL revival project. Not affiliated with or endorsed by EA or EA Sports.
+        <footer style="text-align: center; color: rgba(229, 231, 235, 0.85); margin-top: 36px;">
+            © 2026 Zamboni.gg - Fan-made NHL revival project. Not affiliated with or endorsed by EA Sports.
         </footer>
     </div>
 </section>
 
 <script>
-    const games = ["NHL 10", "NHL 11", "NHL 12", "NHL 13", "NHL 14", "NHL 15", "NHL Legacy"];
-    let gi = 0, gj = 0, del = false;
-
-    function type() {
-        const word = games[gi];
-        document.getElementById("type").textContent = word.substring(0, gj);
-        if (!del) {
-            gj++;
-            if (gj > word.length) {
-                del = true;
-                setTimeout(type, 1400);
-                return;
+    document.addEventListener("DOMContentLoaded", () => {
+        const games = ["NHL 10", "NHL 11", "NHL 12", "NHL 13", "NHL 14", "NHL 15", "NHL Legacy"];
+        let gi = 0, gj = 0, del = false;
+        function type() {
+            const word = games[gi];
+            const el = document.getElementById("type");
+            if (el) el.textContent = word.substring(0, gj);
+            if (!del) {
+                gj++;
+                if (gj > word.length) {
+                    del = true;
+                    setTimeout(type, 1400);
+                    return;
+                }
+            } else {
+                gj--;
+                if (gj === 0) {
+                    del = false;
+                    gi = (gi + 1) % games.length;
+                }
             }
-        } else {
-            gj--;
-            if (gj === 0) {
-                del = false;
-                gi = (gi + 1) % games.length;
+            setTimeout(type, del ? 40 : 65);
+        }
+        type();
+        fetch("https://discord.com/api/v9/invites/FgPY7tAFEJ?with_counts=true")
+            .then(r => r.json())
+            .then(d => {
+                document.getElementById("discordMembers").textContent = d.approximate_member_count?.toLocaleString() ?? "-";
+                document.getElementById("discordOnline").textContent = d.approximate_presence_count?.toLocaleString() ?? "-";
+            })
+            .catch(() => {
+                document.getElementById("discordMembers").textContent = "-";
+                document.getElementById("discordOnline").textContent = "-";
+            });
+
+        fetch("https://api.github.com/orgs/ZamboniDevelopment/repos")
+            .then(r => r.json())
+            .then(d => {
+                document.getElementById("githubRepos").textContent = Array.isArray(d) ? d.length : "-";
+                const stars = d.reduce((s, r) => s + r.stargazers_count, 0);
+                document.getElementById("githubStars").textContent = stars || "-";
+            })
+            .catch(() => {
+                document.getElementById("githubRepos").textContent = "-";
+                document.getElementById("githubStars").textContent = "-";
+            });
+        async function load(v, id) {
+            try {
+                const r = await fetch(`https://zamboni.gg/temp/status/${v}`);
+                if (!r.ok) throw new Error();
+                const j = await r.json();
+                document.getElementById(id).innerHTML =
+                    `<span class="online-dot"></span><strong style="color:#fff">${j.onlineUsersCount}</strong> players<br>` +
+                    `<span>${j.activeGames} games &middot; ${j.queuedUsers} queued</span>`;
+            } catch {
+                document.getElementById(id).innerHTML = `<span style="color:rgba(229,231,235,.3)">Offline</span>`;
             }
         }
-        setTimeout(type, del ? 40 : 65);
-    }
-
-    type();
-
-    //discord stats
-    fetch("https://discord.com/api/v9/invites/FgPY7tAFEJ?with_counts=true")
-        .then(r => r.json())
-        .then(d => {
-            document.getElementById("discordMembers").textContent = d.approximate_member_count?.toLocaleString() ?? "-";
-            document.getElementById("discordOnline").textContent = d.approximate_presence_count?.toLocaleString() ?? "-";
-        })
-        .catch(() => {
-            document.getElementById("discordMembers").textContent = "-";
-            document.getElementById("discordOnline").textContent = "-";
-        });
-
-    //github stats
-    fetch("https://api.github.com/orgs/ZamboniDevelopment/repos")
-        .then(r => r.json())
-        .then(d => {
-            document.getElementById("githubRepos").textContent = Array.isArray(d) ? d.length : "-";
-            const stars = d.reduce((s, r) => s + r.stargazers_count, 0);
-            document.getElementById("githubStars").textContent = stars || "-";
-        })
-        .catch(() => {
-            document.getElementById("githubRepos").textContent = "-";
-            document.getElementById("githubStars").textContent = "-";
-        });
-
-    //nhl server stats
-    async function load(v, id) {
-        try {
-            //const r = await fetch(`/temp/status/${v}`); /* LOCAL */
-            const r = await fetch(`https://zamboni.gg/temp/status/${v}`); /* TEMP WAY TO MAKE IT WORK */
-            const j = await r.json();
-            document.getElementById(id).innerHTML =
-                `<span class="online-dot"></span><strong style="color:#fff">${j.onlineUsersCount}</strong> players<br>` +
-                `<span>${j.activeGames} games &middot; ${j.queuedUsers} queued</span>`;
-        } catch {
-            document.getElementById(id).innerHTML = `<span style="color:rgba(229,231,235,.3)">Offline</span>`;
-        }
-    }
-
-    load("nhl10", "nhl10");
-    load("nhl11", "nhl11");
-    load("nhl12", "nhl12");
-    load("nhl13", "nhl13");
-    load("nhl14", "nhl14");
-    load("nhl15", "nhl15");
-    load("nhllegacy", "nhllegacy");
+        const serverTargets = [
+            { v: "nhl10", id: "nhl10" },
+            { v: "nhl11", id: "nhl11" },
+            { v: "nhl12", id: "nhl12" },
+            { v: "nhl13", id: "nhl13" },
+            { v: "nhl14", id: "nhl14" },
+            { v: "nhl15", id: "nhl15" },
+            { v: "nhllegacy", id: "nhllegacy" }
+        ];
+        Promise.allSettled(serverTargets.map(t => load(t.v, t.id)));
+    });
 </script>
 </body>
 </html>
