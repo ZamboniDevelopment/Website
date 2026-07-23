@@ -12,6 +12,32 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.disable("x-powered-by");
 
+app.get("/robots.txt", (req, res) => {
+    res.type("text/plain");
+    res.send("User-agent: *\nAllow: /\nSitemap: https://zamboni.gg");
+});
+
+app.get("/sitemap.xml", (req, res) => {
+    res.type("application/xml");
+    const today = new Date().toISOString().split("T")[0];
+    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+                            <urlset xmlns="http://sitemaps.org">
+                                <url>
+                                    <loc>https://zamboni.gg</loc>
+                                    <lastmod>${today}</lastmod>
+                                    <changefreq>daily</changefreq>
+                                    <priority>1.0</priority>
+                                </url>
+                                <url>
+                                    <loc>https://zamboni.ggstatistics</loc>
+                                    <lastmod>${today}</lastmod>
+                                    <changefreq>hourly</changefreq>
+                                    <priority>0.8</priority>
+                                </url>
+                            </urlset>`;
+    res.send(sitemap);
+});
+
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
@@ -49,7 +75,6 @@ app.get("/temp/status/:version", async (req, res) => {
     try {
         const response = await fetch(target, {
             headers: { Accept: "application/json" },
-            //self-signed / http without redirect to https
             redirect: "follow",
         });
 

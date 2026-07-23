@@ -149,11 +149,16 @@
         }
 
         section {
-            height: 100vh;
+            min-height: 100vh;
             scroll-snap-align: start;
             display: flex;
             align-items: center;
             position: relative;
+            overflow: hidden;
+        }
+
+        section:first-of-type {
+            padding-top: 64px;
         }
 
         .gradient {
@@ -292,7 +297,7 @@
             background: rgba(255, 255, 255, .04);
             border: 1px solid rgba(255, 255, 255, .08);
             border-radius: 16px;
-            padding: 22px 18px;
+            padding: 14px 16px;
             text-align: center;
             backdrop-filter: blur(8px);
             transition: border-color .25s, transform .25s;
@@ -327,7 +332,7 @@
         .game-card .server-stat {
             font-size: 13px;
             color: rgba(229, 231, 235, .55);
-            line-height: 1.8;
+            line-height: 1.5;
         }
 
         .online-dot {
@@ -343,7 +348,7 @@
         .section2-inner {
             max-width: 960px;
             margin: 0 auto;
-            padding: 0 24px;
+            padding: 100px 24px 40px;
             width: 100%;
         }
 
@@ -388,22 +393,6 @@
             50% {
                 transform: translateX(-50%) translateY(8px)
             }
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(79, 124, 255, .12);
-            border: 1px solid rgba(79, 124, 255, .25);
-            color: var(--ice-light);
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            padding: 5px 12px;
-            border-radius: 100px;
-            margin-bottom: 18px;
         }
 
         @media (max-width: 768px) {
@@ -453,17 +442,26 @@
         }
     </style>
     <script type="application/ld+json">
-        {
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            "name": "Zamboni",
-            "url": "https://zamboni.gg",
-            "description": "Community-run private servers for classic NHL games including NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition on RPCS3.",
-            "potentialAction": {
-                "@type": "JoinAction",
-                "target": "https://discord.gg/FgPY7tAFEJ"
+        [
+            {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": "Zamboni",
+                "url": "https://zamboni.gg",
+                "description": "Community-run private servers for classic NHL games including NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition on RPCS3."
+            },
+            {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": "Zamboni Community",
+                "url": "https://zamboni.gg",
+                "sameAs": [
+                    "https://discord.gg/FgPY7tAFEJ"
+                ]
             }
-        }
+        ]
+    </script>
+
     </script>
 </head>
 <body>
@@ -483,10 +481,6 @@
     <div class="max-w-6xl mx-auto px-6 w-full">
         <div class="hero-grid" style="display:grid; grid-template-columns: 3fr 2fr; gap: 40px; align-items: center;">
             <div>
-                <div class="badge">
-                    <span style="width:6px;height:6px;background:#22c55e;border-radius:50%;display:inline-block;box-shadow:0 0 6px #22c55e"></span>
-                    Servers Online
-                </div>
                 <h1>
                     The best private<br>server for<br>
                     <span style="display:block; min-height:1.15em; line-height:1.15;">
@@ -553,10 +547,10 @@
 </section>
 <section>
     <div class="section2-inner">
-        <h2 style="font-size:clamp(28px,4vw,40px); margin-bottom:24px; text-align:center;">
+        <h2 style="font-size:clamp(28px,4vw,40px); margin-bottom:16px; text-align:center;">
             Live Game Servers
         </h2>
-        <div class="server-cards-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:48px;">
+        <div class="server-cards-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:28px;">
             <div class="game-card">
                 <h3>NHL 10</h3>
                 <div class="server-stat" id="nhl10">
@@ -570,7 +564,7 @@
                 </div>
             </div>
             <div class="game-card">
-                <h3>NHL 12</h3>
+                <h3>NHL 12 + HUT 12</h3>
                 <div class="server-stat" id="nhl12">
                     <span style="color:rgba(229,231,235,.3)">Loading...</span>
                 </div>
@@ -603,7 +597,7 @@
         <h2 style="font-size:clamp(22px,3vw,32px); margin-bottom:4px; text-align:center;">
             Frequently Asked Questions
         </h2>
-        <div style="margin-top:8px;">
+        <div style="margin-top:2px;">
             <div class="faq-item">
                 <h3>What is Zamboni?</h3>
                 <p>Zamboni is a community-driven project restoring online multiplayer for classic NHL games on RPCS3 - including NHL 10, NHL 11, NHL 12, NHL 13, NHL 14, NHL 15 and NHL Legacy Edition.</p>
@@ -630,10 +624,6 @@
                 <h3>Can I contribute?</h3>
                 <p>Yes. Zamboni is open source - developers can contribute via GitHub.</p>
             </div>
-            <div class="faq-item" style="border-bottom:none;">
-                <h3>Where can I see statistics?</h3>
-                <p>The statistics page displays player rankings, match history and server activity.</p>
-            </div>
         </div>
         <footer style="text-align:center; color:rgba(229,231,235,.25); margin-top:36px; font-size:13px;">
             &copy; 2026 Zamboni.gg - Fan-made NHL revival project. Not affiliated with or endorsed by EA or EA Sports.
@@ -650,7 +640,7 @@
         document.getElementById("type").textContent = word.substring(0, gj);
         if (!del) {
             gj++;
-            if (gj > word.length + 1) {
+            if (gj > word.length) {
                 del = true;
                 setTimeout(type, 1400);
                 return;
@@ -675,17 +665,21 @@
             document.getElementById("discordOnline").textContent = d.approximate_presence_count?.toLocaleString() ?? "-";
         })
         .catch(() => {
+            document.getElementById("discordMembers").textContent = "-";
+            document.getElementById("discordOnline").textContent = "-";
         });
 
     //github stats
     fetch("https://api.github.com/orgs/ZamboniDevelopment/repos")
         .then(r => r.json())
         .then(d => {
-            document.getElementById("githubRepos").textContent = d.length ?? "-";
+            document.getElementById("githubRepos").textContent = Array.isArray(d) ? d.length : "-";
             const stars = d.reduce((s, r) => s + r.stargazers_count, 0);
             document.getElementById("githubStars").textContent = stars || "-";
         })
         .catch(() => {
+            document.getElementById("githubRepos").textContent = "-";
+            document.getElementById("githubStars").textContent = "-";
         });
 
     //nhl server stats
@@ -693,7 +687,6 @@
         try {
             //const r = await fetch(`/temp/status/${v}`); /* LOCAL */
             const r = await fetch(`https://zamboni.gg/temp/status/${v}`); /* TEMP WAY TO MAKE IT WORK */
-            //const r = await fetch(`https://zamboni.gg/${v}/status`); /* NOT WORKING CURRENTLY */
             const j = await r.json();
             document.getElementById(id).innerHTML =
                 `<span class="online-dot"></span><strong style="color:#fff">${j.onlineUsersCount}</strong> players<br>` +
