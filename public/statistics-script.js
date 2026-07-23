@@ -27,14 +27,14 @@ const App = (() => {
     };
     const STATE = {
         tab:         "status",
-        gamesVer:   "nhl10",
+        gamesVer:   "nhllegacy",
         gamesMode:  "VS",
         gamesSort:  "date_desc",
         gamesSearch:"",
         gamesRaw:   [],
-        playersVer: "nhl10",
+        playersVer: "nhllegacy",
         playersMode:"VS",
-        lbVer:      "nhl10",
+        lbVer:      "nhllegacy",
         lbRange:    "day",
         players:    [],
         profileName:null,
@@ -563,7 +563,7 @@ const App = (() => {
     };
 
     const hutNoTagHtml = () =>
-        `no linked gamertag <span class="hut-help" tabindex="0" data-tip="Gamertags are read from the game report databases. Play at least one regular (non-HUT) online game in any NHL title on Zamboni and the gamertag links to this manager automatically.">?</span>`;
+        `no linked gamertag <span class="hut-help" tabindex="0" data-tip="Gamertags are read from the game report databases. Play at least one regular (non-HUT) online game in any NHL title on Zamboni and the gamertag links to this manager automatically. This is an beta thing and might not work perfectly.">?</span>`;
 
     const applyHutNames = () => {
         if (STATE.tab !== "hut-stats") return;
@@ -857,7 +857,7 @@ const App = (() => {
         STATE.hutCardSort  = "rating_desc";
 
         const profileUrl  = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}`);
-        const cardsUrl    = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}/cards?limit=500`);
+        const cardsUrl    = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}/cards?limit=4000`); // 4k might not be enough dont know.
         const offersUrl   = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}/offers`);
         const watchingUrl = hutEndpoint(`/api/hut/manager/${encodeURIComponent(userId)}/watching`);
         if (force) [profileUrl, cardsUrl, offersUrl, watchingUrl].forEach(bust);
