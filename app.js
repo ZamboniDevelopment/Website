@@ -52,7 +52,7 @@ app.get("/sitemap.xml", (req, res) => {
                                     <priority>1.0</priority>
                                 </url>
                                 <url>
-                                    <loc>https://zamboni.ggstatistics</loc>
+                                    <loc>https://zamboni.gg/statistics</loc>
                                     <lastmod>${today}</lastmod>
                                     <changefreq>hourly</changefreq>
                                     <priority>0.8</priority>
