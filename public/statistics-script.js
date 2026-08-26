@@ -17,11 +17,11 @@ const App = (() => {
         modes: {
             nhl10:     [],
             nhl11:     ["VS", "SO", "OTP"],
-            nhl12:     ["VS", "SO"],
-            nhl13:     ["VS", "SO"],
-            nhl14:     ["VS", "SO"],
-            nhl15:     ["VS", "SO"],
-            nhllegacy: ["VS", "SO"],
+            nhl12:     ["VS", "SO", "OTP"],
+            nhl13:     ["VS", "SO", "OTP"],
+            nhl14:     ["VS", "SO", "OTP"],
+            nhl15:     ["VS", "SO", "OTP"],
+            nhllegacy: ["VS", "SO", "OTP"],
         },
         hut: "hut12",
     };
