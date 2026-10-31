@@ -15,7 +15,7 @@ const App = (() => {
             nhllegacy: { label: "NHL Legacy", url: () => `/temp/status/nhllegacy` },
         },
         modes: {
-            nhl10:     [],
+            nhl10:     ["VS", "SO"],
             nhl11:     ["VS", "SO", "OTP"],
             nhl12:     ["VS", "SO", "OTP"],
             nhl13:     ["VS", "SO", "OTP"],
@@ -152,9 +152,13 @@ const App = (() => {
     };
 
     const extractGames = (data, ver, mode) => {
+        if (Array.isArray(data)) return arr(data);
+        const d = obj(data);
         const modes = CFG.modes[ver] || [];
-        if (!modes.length) return arr(data);
-        return arr(data?.[mode.toLowerCase()]);
+        if (!modes.length) return Object.values(d).flatMap(arr);
+        const want = String(mode ?? "").toLowerCase();
+        const key = Object.keys(d).find(k => k.toLowerCase() === want);
+        return key ? arr(d[key]) : [];
     };
 
     // todo: more sorting ways? or just new way to make advanced filters as the data that could be filtered from the db via api is so much
@@ -583,7 +587,7 @@ const App = (() => {
         const statusUrl     = hutEndpoint("/api/hut/status");
         const economyUrl    = hutEndpoint("/api/hut/stats/economy");
         const chemistryUrl = hutEndpoint("/api/hut/stats/squads/top?sort=chemistry&limit=5");
-        if (force) { bust(statusUrl); bust(economyUrl); bust(formationsUrl); bust(hutManagerStatsUrl); }
+        if (force) { bust(statusUrl); bust(economyUrl); bust(chemistryUrl); bust(hutManagerStatsUrl); }
 
         el.innerHTML = `
             <div style="display:flex;flex-direction:column;gap:12px;">
