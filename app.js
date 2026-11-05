@@ -1,10 +1,200 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const { createProxyMiddleware, responseInterceptor } = require("http-proxy-middleware");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const TARGET_BASE = "https://zamboni.gg";
+
+// rinkside proxy
+const RINKSIDE_TARGET = "https://nhllegacy.duckdns.org";
+const RINKSIDE_TARGET_HOST = "nhllegacy.duckdns.org";
+const RINKSIDE_PREFIX = "/rinkside";
+function rinksideIsDownload(p) {
+    return typeof p === "string" && p.includes("/download/");
+}
+function rinksideHasPrefix(p) {
+    return p === RINKSIDE_PREFIX || p.startsWith(RINKSIDE_PREFIX + "/") ||
+        p.startsWith(RINKSIDE_PREFIX + "?") || p.startsWith(RINKSIDE_PREFIX + "#");
+}
+function rinksideMapPath(p) {
+    if (typeof p !== "string" || !p.startsWith("/") || p.startsWith("//")) return p;
+    if (rinksideIsDownload(p)) return RINKSIDE_TARGET + p;
+    if (rinksideHasPrefix(p)) return p;
+    return RINKSIDE_PREFIX + p;
+}
+function rinksideRewriteLocation(loc) {
+    for (const origin of [`https://${RINKSIDE_TARGET_HOST}`, `http://${RINKSIDE_TARGET_HOST}`]) {
+        if (loc.startsWith(origin)) {
+            const rest = loc.slice(origin.length) || "/";
+            return rinksideIsDownload(rest) ? loc : rinksideMapPath(rest);
+        }
+    }
+    return rinksideMapPath(loc);
+}
+const RINKSIDE_ORIGIN_RE = new RegExp(
+    `(?:https?:)?//${RINKSIDE_TARGET_HOST.replace(/\./g, "\\.")}(/[^\\s"'<>)\`\\\\]*)?`,
+    "g"
+);
+function rinksideReplaceOrigin(text) {
+    return text.replace(RINKSIDE_ORIGIN_RE, (match, p) => {
+        const p2 = p || "/";
+        return rinksideIsDownload(p2) ? match : RINKSIDE_PREFIX + p2;
+    });
+}
+function rinksidePatchPathname(text) {
+    return text.replace(
+        /(?<![\w$.])(?:(?:window|document|self|globalThis)\.)?location\.pathname\b(?!\s*=(?!=))/g,
+        '(typeof __rsPath==="function"?__rsPath():location.pathname)'
+    );
+}
+function rinksideRewriteMarkup(text) {
+    return rinksideReplaceOrigin(text)
+        .replace(
+            /(\s(?:href|src|action|poster|data-src|formaction)\s*=\s*["'])(\/(?!\/)[^"']*)/gi,
+            (m, attr, p) => attr + rinksideMapPath(p)
+        )
+        .replace(
+            /(content\s*=\s*["']\s*\d+\s*;\s*url\s*=\s*)(\/(?!\/)[^"']*)/gi,
+            (m, pre, p) => pre + rinksideMapPath(p)
+        )
+        .replace(
+            /url\(\s*(['"]?)(\/(?!\/)[^'")]*)/gi,
+            (m, q, p) => `url(${q}${rinksideMapPath(p)}`
+        );
+}
+
+// injection to keep fetch, XHR, history etc working
+const RINKSIDE_CLIENT_PATCH = `<script>(function(){
+var P=${JSON.stringify(RINKSIDE_PREFIX)},O=location.origin,H=${JSON.stringify(RINKSIDE_TARGET_HOST)},T="https://"+H;
+function isDl(u){return u.indexOf("/download/")!==-1;}
+function hasP(u){return u===P||u.indexOf(P+"/")===0||u.indexOf(P+"?")===0||u.indexOf(P+"#")===0;}
+function fix(u){
+  if(typeof u!=="string")return u;
+  var o=["https://"+H,"http://"+H,"//"+H];
+  for(var i=0;i<o.length;i++){if(u.indexOf(o[i])===0){var r=u.slice(o[i].length)||"/";return isDl(r)?u:fix(r);}}
+  if(u.indexOf(O+"/")===0||u===O)u=u.slice(O.length)||"/";
+  if(u.charAt(0)==="/"&&u.charAt(1)!=="/"){
+    if(isDl(u))return T+u;
+    if(!hasP(u))return P+u;
+  }
+  return u;
+}
+window.__rsFix=fix;
+window.__rsPath=function(){var p=location.pathname;return hasP(p)?(p.slice(P.length)||"/"):p;};
+
+var f=window.fetch;
+if(f){window.fetch=function(i,o){
+  if(typeof i==="string")i=fix(i);
+  else if(i instanceof URL)i=fix(i.href);
+  else if(i&&i.url){var n=fix(i.url);if(n!==i.url)i=new Request(n,i);}
+  return f.call(this,i,o);
+};}
+var xo=XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open=function(m,u){arguments[1]=fix(u instanceof URL?u.href:u);return xo.apply(this,arguments);};
+["pushState","replaceState"].forEach(function(k){var h=history[k];history[k]=function(s,t,u){return h.call(this,s,t,u==null?u:fix(String(u)));};});
+["assign","replace"].forEach(function(k){try{var h=Location.prototype[k];Location.prototype[k]=function(u){return h.call(this,fix(String(u)));};}catch(e){}});
+var wo=window.open;window.open=function(u){if(u!=null)arguments[0]=fix(String(u));return wo.apply(this,arguments);};
+var ATTRS=["href","src","action","formaction","poster"];
+function fixEl(el){
+  if(!el||el.nodeType!==1)return;
+  for(var i=0;i<ATTRS.length;i++){var a=ATTRS[i],v=el.getAttribute&&el.getAttribute(a);if(v){var n=fix(v);if(n!==v)el.setAttribute(a,n);}}
+}
+function fixTree(root){fixEl(root);if(root.querySelectorAll){var l=root.querySelectorAll("[href],[src],[action],[formaction],[poster]");for(var i=0;i<l.length;i++)fixEl(l[i]);}}
+new MutationObserver(function(ms){ms.forEach(function(m){
+  if(m.type==="attributes")fixEl(m.target);
+  else for(var i=0;i<m.addedNodes.length;i++)fixTree(m.addedNodes[i]);
+});}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:ATTRS});
+document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(a)fixEl(a);},true);
+document.addEventListener("submit",function(e){fixEl(e.target);},true);
+if(window.navigation&&navigation.addEventListener){
+  navigation.addEventListener("navigate",function(e){
+    try{
+      var d=new URL(e.destination.url);
+      if(d.origin===O&&!hasP(d.pathname)&&!e.hashChange&&!e.downloadRequest){
+        e.preventDefault();location.assign(fix(d.pathname+d.search+d.hash));
+      }
+    }catch(_){}
+  });
+}
+})();</script>`;
+app.get(RINKSIDE_PREFIX, (req, res) => {
+    const qs = req.originalUrl.slice(RINKSIDE_PREFIX.length);
+    res.redirect(301, RINKSIDE_PREFIX + "/" + qs);
+});
+app.use((req, res, next) => {
+    if (rinksideHasPrefix(req.path) && rinksideIsDownload(req.originalUrl)) {
+        return res.redirect(302, RINKSIDE_TARGET + req.originalUrl.slice(RINKSIDE_PREFIX.length));
+    }
+    next();
+});
+
+const rinksideProxy = createProxyMiddleware({
+    target: RINKSIDE_TARGET,
+    changeOrigin: true,
+    secure: true,
+    ws: true,
+    pathFilter: (p) => p === RINKSIDE_PREFIX || p.startsWith(RINKSIDE_PREFIX + "/"),
+    pathRewrite: { [`^${RINKSIDE_PREFIX}`]: "" },
+    cookieDomainRewrite: "",
+    cookiePathRewrite: { "*": RINKSIDE_PREFIX },
+    selfHandleResponse: true,
+    on: {
+        proxyReq: (proxyReq, req) => {
+            // fake origin
+            if (req.headers.origin) proxyReq.setHeader("origin", RINKSIDE_TARGET);
+            if (req.headers.referer) {
+                try {
+                    const ref = new URL(req.headers.referer);
+                    const refPath = rinksideHasPrefix(ref.pathname)
+                        ? ref.pathname.slice(RINKSIDE_PREFIX.length) || "/"
+                        : ref.pathname;
+                    proxyReq.setHeader("referer", RINKSIDE_TARGET + refPath + ref.search);
+                } catch (_) {}
+            }
+        },
+        proxyRes: responseInterceptor(async (buffer, proxyRes, req, res) => {
+            if (proxyRes.headers.location) {
+                res.setHeader("location", rinksideRewriteLocation(proxyRes.headers.location));
+            }
+
+            // bypass csp
+            res.removeHeader("content-security-policy");
+            res.removeHeader("content-security-policy-report-only");
+            res.setHeader("referrer-policy", "same-origin");
+
+            const type = (proxyRes.headers["content-type"] || "").toLowerCase();
+
+            if (type.includes("text/html")) {
+                let html = rinksidePatchPathname(rinksideRewriteMarkup(buffer.toString("utf8")));
+                html = html.replace(/<meta[^>]+name\s*=\s*["']referrer["'][^>]*>/gi, "");
+                html = /<head[^>]*>/i.test(html)
+                    ? html.replace(/<head[^>]*>/i, (m) => m + RINKSIDE_CLIENT_PATCH)
+                    : RINKSIDE_CLIENT_PATCH + html;
+                return html;
+            }
+            if (type.includes("text/css")) {
+                return rinksideRewriteMarkup(buffer.toString("utf8"));
+            }
+            if (type.includes("javascript")) {
+                return rinksidePatchPathname(rinksideReplaceOrigin(buffer.toString("utf8")));
+            }
+            if (type.includes("application/json")) {
+                return rinksideReplaceOrigin(buffer.toString("utf8"));
+            }
+            return buffer;
+        }),
+        error: (err, req, res) => {
+            console.error(`X [rinkside] ${req.url}:`, err.message);
+            if (res.writeHead && !res.headersSent) {
+                res.writeHead(502, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ error: "Rinkside unreachable", message: err.message }));
+            }
+        }
+    }
+});
+app.use(rinksideProxy);
 
 app.use(cors());
 app.use(express.json());
@@ -32,7 +222,7 @@ app.get("/llms.txt", (req, res) => {
                                 - **NHL 14**
                                 - **NHL 15**
                                 - **NHL Legacy Edition**`;
-res.send(llmsTxtContent);
+    res.send(llmsTxtContent);
 });
 
 app.get("/robots.txt", (req, res) => {
@@ -184,8 +374,20 @@ if (isLocal) {
     });
 }
 
-app.listen(PORT, () => {
+// rinkiside patch
+app.use((req, res, next) => {
+    let ref;
+    try { ref = new URL(req.headers.referer || ""); } catch (_) { return next(); }
+    if (ref.host !== req.headers.host || !rinksideHasPrefix(ref.pathname)) return next();
+
+    const target = rinksideMapPath(req.originalUrl);
+    if (target === req.originalUrl) return next();
+    res.redirect(["GET", "HEAD"].includes(req.method) ? 302 : 307, target);
+});
+
+const server = app.listen(PORT, () => {
     console.log(
         `Server running on http://localhost:${PORT} (${isLocal ? "PROXY MODE" : "PRODUCTION MODE"})`
     );
 });
+server.on("upgrade", rinksideProxy.upgrade);
